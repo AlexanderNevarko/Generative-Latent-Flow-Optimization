@@ -25,13 +25,19 @@ def generate_samples(dataloader, z_dim=128, bw_method=0.1):
 class GLOGenerator(nn.Module):
     
     def __init__(self, 
-                min_channels: int, 
-                max_channels: int,
-                out_channels: int,
-                noise_channels: int,
-                num_blocks: int):
+                 min_channels: int, 
+                 max_channels: int,
+                 noise_channels: int,
+                 num_blocks: int,
+                 dataloader):
+        '''
+        dataloader: 
+            must be indesed dataloader and return (idx, img, target)
+        '''
         super(GLOGenerator, self).__init__()
-        self.output_size = 4 * 2**num_blocks
+        _, sample, _ = next(iter(dataloader))
+        self.output_size = [sample.shape[-2], sample.shape[-1]]
+        self.out_channels = sample[-3]
         if max_channels != min_channels * 2**num_blocks:
             raise ValueError(f'Wrong channels num: {max_channels}, {min_channels}')
         
@@ -64,10 +70,11 @@ class GLOGenerator(nn.Module):
         out = self.bn.forward(out)
         out = self.act.forward(out)
         out = self.end_conv(out)
-        outputs = self.sigmoid.forward(out)
+        out = self.sigmoid.forward(out)
+        out = F.interpolate(out, size=(noise.shape[0], self.out_channels, *self.output_size))
 
-        assert outputs.shape == (noise.shape[0], self.out_channels, self.output_size, self.output_size)
-        return outputs
+        assert out.shape == (noise.shape[0], self.out_channels, *self.output_size)
+        return out
 
 
 class GLOModel(nn.Module):
