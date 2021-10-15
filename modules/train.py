@@ -1,6 +1,50 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
+import numpy as np
+
+from tqdm import tqdm
+
+from collections import Counter
+
+
+class GLOTrainer():
+    def __init__(self, 
+                 model, use_gpu,
+                 logger):
+        self.model = model
+        self.logger = logger
+        self.use_gpu = use_gpu
+        self.device = torch.device('cuda') if use_gpu else torch.device('cpu')
+    
+    def train(self, n_epochs,
+              train_loader,
+              val_loader,
+              loss_func,
+              optimizer):
+        cnt = Counter()
+        running_loss = []
+        for epoch in range(n_epochs):
+            for i, (idx, img, target) in enumerate(tqdm(train_loader, leave=False)):
+                
+                idx, img = idx.to(self.device), img.to(self.device)
+                
+                optimizer.zero_grad()
+                preds = self.model(self.model.z[idx])
+                loss = loss_func(preds, img)
+                loss.backward()
+                optimizer.step()
+                # Don't forget to reproject z
+                self.model.z[idx] = \
+                    self.model.sample_generator.reproject_to_unit_ball(self.model.z[idx])
+                # Log metrics
+                running_loss.append(loss.item())
+                self.logger.log_metric(f'Train loss', loss.item(), epoch=epoch, step=cnt['train'])
+                cnt['train'] += 1
+            print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
+                
+        
+
 
 
 class GLOOptimizer(torch.optim.Adam):
