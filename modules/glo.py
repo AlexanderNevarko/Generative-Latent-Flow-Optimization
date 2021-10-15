@@ -10,16 +10,26 @@ from scipy.stats import gaussian_kde
 from res_block import PreActResBlock
 
 
-def generate_samples(dataloader, z_dim=128, bw_method=0.1):
-    _, img = zip(*[(idx, img_) for idx, img_, _ in dataloader])
-    img = torch.cat(img)
-    img = img.view(img.shape[0], -1).numpy()
-    pca = PCA(n_components=z_dim)
-    z_dataset = pca.fit_transform(img).T
-    kernel = gaussian_kde(z_dataset, bw_method=bw_method)
-    samples = kernel.resample(size=len(dataloader.dataset)).T
-    samples = torch.tensor(samples, requires_grad=True)
-    return samples
+class SampleGenerator():
+    def __init__(self, dataloader, z_dim, bw_method):
+        _, img = zip(*[(idx, img_) for idx, img_, _ in dataloader])
+        img = torch.cat(img)
+        img = img.view(img.shape[0], -1).numpy()
+        self.pca = PCA(n_components=z_dim)
+        self.z_dataset = self.pca.fit_transform(img)
+        self.kernel = gaussian_kde(self.z_dataset.T, bw_method=bw_method)
+        
+    def generate_samples(self, n_samples=None):
+        n_samples = n_samples if n_samples else self.z_dataset.shape[0]
+        samples = self.kernel.resample(size=n_samples).T
+        samples = torch.tensor(samples, requires_grad=True)
+        samples = self.reproject_to_unit_ball(samples)
+        return samples
+    
+    @staticmethod
+    def reproject_to_unit_ball(z):
+        l2norm = torch.sum(z**2, axis=1)
+        z = z / torch.max(torch.tensor([1, l2norm], requires_grad=True))
 
 
 class GLOGenerator(nn.Module):
@@ -78,11 +88,12 @@ class GLOGenerator(nn.Module):
 
 
 class GLOModel(nn.Module):
-    def __init__(self, generator, dataloader, z_dim, bw_method):
+    def __init__(self, generator, dataloader, sample_generator):
         self.generator = generator
-        self.z = torch.Parameter(generate_samples(dataloader,
-                                                  z_dim=z_dim,
-                                                  bw_method=bw_method))
+        self.sample_generator = sample_generator
+        self.z = torch.Parameter(
+            self.sample_generator.generate_samples(
+                n_samples=len(dataloader.dataset)))
     
     def forward(self, idx=None, inputs=None):
         if inputs:
