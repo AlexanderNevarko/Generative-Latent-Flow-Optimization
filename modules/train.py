@@ -1,6 +1,7 @@
+import os
 import torch
 import torch.nn as nn
-import pytorch_lightning as pl
+# import pytorch_lightning as pl
 import numpy as np
 
 from tqdm import tqdm
@@ -19,73 +20,78 @@ class GLOTrainer():
     
     def train(self, n_epochs,
               train_loader,
-              val_loader,
               loss_func,
-              optimizer):
+              optimizer,
+              exp_name,
+              model_path):
         cnt = Counter()
         running_loss = []
+        self.logger.set_name(exp_name)
         for epoch in range(n_epochs):
             for i, (idx, img, target) in enumerate(tqdm(train_loader, leave=False)):
-                
-                idx, img = idx.to(self.device), img.to(self.device)
+                # import ipdb; ipdb.set_trace()
+                idx, img = idx.long().to(self.device), img.float().to(self.device)
                 
                 optimizer.zero_grad()
-                preds = self.model(self.model.z[idx])
+                preds = self.model(idx=idx)
                 loss = loss_func(preds, img)
                 loss.backward()
                 optimizer.step()
                 # Don't forget to reproject z
-                self.model.z[idx] = \
-                    self.model.sample_generator.reproject_to_unit_ball(self.model.z[idx])
+                with torch.no_grad():
+                    self.model.z[idx] = \
+                        self.model.sample_generator.reproject_to_unit_ball(self.model.z[idx])
                 # Log metrics
                 running_loss.append(loss.item())
                 self.logger.log_metric(f'Train loss', loss.item(), epoch=epoch, step=cnt['train'])
                 cnt['train'] += 1
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
+            torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
+            
                 
         
 
 
 
-class GLOOptimizer(torch.optim.Adam):
-    def __init__(self, *args, z_param, zlr):
-        super(GLOOptimizer, self).__init__(*args)
-        self.z_param = z_param
-        self.zlr = zlr
+# class GLOOptimizer(torch.optim.Adam):
+#     def __init__(self, *args, z_param, zlr):
+#         super(GLOOptimizer, self).__init__(*args)
+#         self.z_param = z_param
+#         self.zlr = zlr
     
-    def step(self, closure=None, z_grad=None):
-        loss = super().step()
+#     def step(self, closure=None, z_grad=None):
+#         loss = super().step()
         
-        self.z_param -= self.zlr * z_grad
-        self.z_param /= torch.max(torch.tensor([torch.sqrt(torch.sum(self.z_param**2)), 1.0]))
-        return loss
+#         self.z_param -= self.zlr * z_grad
+#         self.z_param /= torch.max(torch.tensor([torch.sqrt(torch.sum(self.z_param**2)), 1.0]))
+#         return loss
         
 
 
-class GLO_pl(pl.LightningModule):
+# class GLO_pl(pl.LightningModule):
     
-    def __init__(self, model, loss, zlr, experiment, exp_name):
-        super(GLO_pl, self).__init__()
-        self.model = model
-        self.loss = loss
-        self.zlr = zlr
-        self.experiment = experiment
-        self.experiment.set_name(exp_name)
+#     def __init__(self, model, loss, zlr, experiment, exp_name):
+#         super(GLO_pl, self).__init__()
+#         self.model = model
+#         self.loss = loss
+#         self.zlr = zlr
+#         self.experiment = experiment
+#         self.experiment.set_name(exp_name)
         
-    def training_step(self, batch, bacth_idx):
-        z, img = batch
-        pred = self.model(z)
-        loss = self.loss(pred, img)
-        self.experiment.log_metric()
-        return loss
+#     def training_step(self, batch, bacth_idx):
+#         z, img = batch
+#         pred = self.model(z)
+#         loss = self.loss(pred, img)
+#         self.experiment.log_metric()
+#         return loss
     
-    def validation_step(self, batch, bacth_idx):
-        z, img = batch.batch
-        pred = self.model(z)
-        loss = self.loss(pred, img)
+#     def validation_step(self, batch, bacth_idx):
+#         z, img = batch.batch
+#         pred = self.model(z)
+#         loss = self.loss(pred, img)
         
     
-    def configure_optimizers(self):
-        return GLOOptimizer(self.model.parameters(), 
-                            z_param=self.model.z, 
-                            zlr=self.zlr)
+#     def configure_optimizers(self):
+#         return GLOOptimizer(self.model.parameters(), 
+#                             z_param=self.model.z, 
+#                             zlr=self.zlr)

@@ -7,7 +7,7 @@ from torch.nn.utils import spectral_norm
 from sklearn.decomposition import PCA
 from scipy.stats import gaussian_kde
 
-from res_block import PreActResBlock
+from .res_block import PreActResBlock
 
 
 class SampleGenerator():
@@ -28,8 +28,11 @@ class SampleGenerator():
     
     @staticmethod
     def reproject_to_unit_ball(z):
-        l2norm = torch.sum(z**2, axis=1)
-        z = z / torch.max(torch.tensor([1, l2norm], requires_grad=True))
+        # Inplace reprojection
+        l2norm = torch.sqrt(torch.sum(z**2, axis=1))
+        ones = torch.ones_like(l2norm)
+        z = z / (torch.amax(torch.vstack([l2norm, ones]), dim=0)).view(z.shape[0], 1)
+        return z.float()
 
 
 class GLOGenerator(nn.Module):
@@ -47,12 +50,11 @@ class GLOGenerator(nn.Module):
         super(GLOGenerator, self).__init__()
         _, sample, _ = next(iter(dataloader))
         self.output_size = [sample.shape[-2], sample.shape[-1]]
-        self.out_channels = sample[-3]
+        self.out_channels = sample.shape[-3]
         if max_channels != min_channels * 2**num_blocks:
             raise ValueError(f'Wrong channels num: {max_channels}, {min_channels}')
         
         self.embed_features = noise_channels
-        self.out_channels = out_channels
         self.num_blocks = num_blocks
         self.min_channels = min_channels
         self.max_channels = max_channels
@@ -81,7 +83,7 @@ class GLOGenerator(nn.Module):
         out = self.act.forward(out)
         out = self.end_conv(out)
         out = self.sigmoid.forward(out)
-        out = F.interpolate(out, size=(noise.shape[0], self.out_channels, *self.output_size))
+        out = F.interpolate(out, size=self.output_size)
 
         assert out.shape == (noise.shape[0], self.out_channels, *self.output_size)
         return out
@@ -89,9 +91,10 @@ class GLOGenerator(nn.Module):
 
 class GLOModel(nn.Module):
     def __init__(self, generator, dataloader, sample_generator):
+        super(GLOModel, self).__init__()
         self.generator = generator
         self.sample_generator = sample_generator
-        self.z = torch.Parameter(
+        self.z = nn.Parameter(
             self.sample_generator.generate_samples(
                 n_samples=len(dataloader.dataset)))
     
