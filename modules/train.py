@@ -25,15 +25,16 @@ class GLOTrainer():
               exp_name,
               model_path):
         cnt = Counter()
-        running_loss = []
         self.logger.set_name(exp_name)
         for epoch in range(n_epochs):
+            running_loss = []
             for i, (idx, img, target) in enumerate(tqdm(train_loader, leave=False)):
                 # import ipdb; ipdb.set_trace()
                 idx, img = idx.long().to(self.device), img.float().to(self.device)
                 
                 optimizer.zero_grad()
                 preds = self.model(idx=idx)
+                print(preds.device())
                 loss = loss_func(preds, img)
                 loss.backward()
                 optimizer.step()
@@ -45,6 +46,7 @@ class GLOTrainer():
                 running_loss.append(loss.item())
                 self.logger.log_metric(f'Train loss', loss.item(), epoch=epoch, step=cnt['train'])
                 cnt['train'] += 1
+            self.logger.log_metric(f'Average epoch train loss {np.mean(running_loss)}')
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
             

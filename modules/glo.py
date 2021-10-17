@@ -99,7 +99,7 @@ class GLOModel(nn.Module):
                 n_samples=len(dataloader.dataset)))
     
     def forward(self, idx=None, inputs=None):
-        if inputs:
+        if inputs is not None:
             return self.generator(inputs)
         return self.generator(self.z[idx])
         
