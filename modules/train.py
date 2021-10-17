@@ -1,6 +1,8 @@
 import os
 import torch
 import torch.nn as nn
+from torchvision.utils import make_grid
+from torchvision import transforms
 # import pytorch_lightning as pl
 import numpy as np
 
@@ -46,11 +48,27 @@ class GLOTrainer():
                 self.logger.log_metric(f'Train loss', loss.item(), epoch=epoch, step=cnt['train'])
                 cnt['train'] += 1
             self.logger.log_metric(f'Average epoch train loss', np.mean(running_loss), epoch=epoch, step=epoch)
+            self.logger.log_image(visualize_image_grid(self.model), name=f'Epoch {epoch}', step=epoch)
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
             
                 
-        
+def visualize_image_grid(glo_model, inputs=None):
+    if inputs is not None:
+        inputs = inputs.to(glo_model.z.device)
+        img = glo_model(inputs=inputs)
+    else:    
+        idx_num = len(glo_model.z)
+        random_idx = torch.randint(low=0, high=idx_num, size=(16,), device=glo_model.z.device)
+        img = glo_model(idx=random_idx)
+    img = img.detach().cpu()
+    grid = make_grid(img, nrow=len(img) // 4)
+    transform = transforms.Compose([
+        transforms.ToPILImage(), transforms.Resize(size=(96, 96))
+    ])
+    return transform(grid)
+    
+    
 
 
 
