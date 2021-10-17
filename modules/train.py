@@ -45,7 +45,7 @@ class GLOTrainer():
                 running_loss.append(loss.item())
                 self.logger.log_metric(f'Train loss', loss.item(), epoch=epoch, step=cnt['train'])
                 cnt['train'] += 1
-            self.logger.log_metric(f'Average epoch train loss {np.mean(running_loss)}')
+            self.logger.log_metric(f'Average epoch train loss', np.mean(running_loss), epoch=epoch, step=epoch)
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
             
