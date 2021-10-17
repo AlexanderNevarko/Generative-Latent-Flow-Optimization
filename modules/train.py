@@ -34,7 +34,6 @@ class GLOTrainer():
                 
                 optimizer.zero_grad()
                 preds = self.model(idx=idx)
-                print(preds.device())
                 loss = loss_func(preds, img)
                 loss.backward()
                 optimizer.step()
