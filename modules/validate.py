@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import transforms
+from torchvision.utils import make_grid
 import numpy as np
+
 
 from tqdm import tqdm
 
@@ -35,4 +38,20 @@ class Validator():
             running_loss.append(loss.mean().item())
             
         return z, np.mean(running_loss)
+
+    def visualize_val_results(self, z, img):
+        '''
+        z: latent vectors to generate on
+        img: ground truth image tensors
+        '''
+        pairs = torch.empty(img.shape[0]*2, *img.shape[1:], dtype=torch.float32)
+        preds = self.model(inputs=z).detach().cpu()
+        img = img.detach().cpu()
+        for idx, (pr, im) in enumerate(zip(preds, img)):
+            pairs[idx] = pr
+            pairs[idx+1] = im
         
+        grid = make_grid(pairs, nrow=2)
+        transform = transforms.ToPILImage()
+        return transform(grid)
+             

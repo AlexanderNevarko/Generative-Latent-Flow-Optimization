@@ -64,7 +64,7 @@ def visualize_image_grid(glo_model, inputs=None):
     img = img.detach().cpu()
     grid = make_grid(img, nrow=len(img) // 4)
     transform = transforms.Compose([
-        transforms.ToPILImage(), transforms.Resize(size=(96, 96))
+        transforms.ToPILImage(),
     ])
     return transform(grid)
     
