@@ -26,6 +26,7 @@ class GLOTrainer():
               optimizer,
               exp_name,
               model_path):
+        self.model.train()
         cnt = Counter()
         self.logger.set_name(exp_name)
         for epoch in range(n_epochs):

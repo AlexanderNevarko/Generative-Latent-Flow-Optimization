@@ -24,11 +24,12 @@ class Validator():
         running_loss = []
         for idx, img, _ in tqdm(self.val_loader, leave=False):
             # import ipdb; ipdb.set_trace()
+            idx, img = idx.long().to(self.device), img.float().to(self.device)
             bs = len(idx)
             loss = torch.full(size=(bs, ), fill_value=min_loss+1.0)
             while torch.any(min_loss < loss):
                 self.optimizer.zero_grad()
-                preds = self.model(z[idx])
+                preds = self.model(inputs=z[idx])
                 loss = self.loss_func(preds, img)
                 loss.backward()
                 self.optimizer.step()
