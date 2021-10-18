@@ -88,6 +88,32 @@ class GLOGenerator(nn.Module):
         assert out.shape == (noise.shape[0], self.out_channels, *self.output_size)
         return out
 
+    # def optimize_to_img(self, img, loss_func, min_loss, optimizer, init_z=None):
+    #     '''
+    #     img: target images tensor with shape (B x C x H x W), must be on model device!
+    #     loss_func: loss function for images
+    #     min_loss: minimal value of loss to stop iterations
+    #     optimizer: optimizer for Z latent vectors
+    #     init_z: initial z values
+    #     '''
+    #     bs, channels, height, width = img.shape
+    #     if init_z is None:
+    #         init_z = torch.randn(size=(bs, self.embed_features), device=img.device)
+    #     import ipdb; ipdb.set_trace()
+    #     z = SampleGenerator.reproject_to_unit_ball(init_z)
+    #     z.requires_grad_(True)
+    #     loss = torch.full(size=(bs, ), fill_value=min_loss+1.0)
+    #     while torch.any(min_loss < loss):
+    #         optimizer.zero_grad()
+    #         preds = self(z)
+    #         loss = loss_func(preds, img)
+    #         loss.backward()
+    #         optimizer.step()
+    #         with torch.no_grad():
+    #             z = SampleGenerator.reproject_to_unit_ball(z)
+    #             z.requires_grad_(True)
+    #     return z.detach(), loss
+        
 
 class GLOModel(nn.Module):
     def __init__(self, generator, dataloader, sample_generator):
@@ -102,4 +128,7 @@ class GLOModel(nn.Module):
         if inputs is not None:
             return self.generator(inputs)
         return self.generator(self.z[idx])
+    
+    # def optimize_to_img(self, img, loss_func, min_loss, optimizer, init_z=None):
+    #     return self.generator.optimize_to_img(img, loss_func, min_loss, optimizer, init_z)
         
