@@ -44,12 +44,14 @@ class Validator():
         z: latent vectors to generate on
         img: ground truth image tensors
         '''
-        pairs = torch.empty(img.shape[0]*2, *img.shape[1:], dtype=torch.float32)
         preds = self.model(inputs=z).detach().cpu()
         img = img.detach().cpu()
-        for idx, (pr, im) in enumerate(zip(preds, img)):
-            pairs[idx] = pr
-            pairs[idx+1] = im
+        
+        img_grid = make_grid(img, nrow=1)
+        pred_grid = make_grid(preds, nrow=1)
+        pairs = torch.empty(2, *img_grid.shape, dtype=torch.float32)
+        pairs[0] = pred_grid
+        pairs[1] = img_grid
         
         grid = make_grid(pairs, nrow=2)
         transform = transforms.ToPILImage()
