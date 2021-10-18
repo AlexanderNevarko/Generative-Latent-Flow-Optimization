@@ -19,7 +19,7 @@ class Validator():
         self.loss_func = loss_func
         self.optimizer = optimizer
         
-    def validate(self, min_loss, z):
+    def validate(self, z, min_loss, max_iter):
         # Never set model to eval mode, it requires gradients!!!
         running_loss = []
         for idx, img, _ in tqdm(self.val_loader, leave=False):
@@ -27,7 +27,8 @@ class Validator():
             idx, img = idx.long().to(self.model.z.device), img.float().to(self.model.z.device)
             bs = len(idx)
             loss = torch.full(size=(bs, ), fill_value=min_loss+1.0)
-            while torch.any(min_loss < loss):
+            cnt = 0
+            while torch.any(min_loss < loss) and cnt < max_iter:
                 # import ipdb; ipdb.set_trace()
                 self.optimizer.zero_grad()
                 preds = self.model(inputs=z[idx])
@@ -36,6 +37,7 @@ class Validator():
                 self.optimizer.step()
                 with torch.no_grad():
                     z[idx] = SampleGenerator.reproject_to_unit_ball(z[idx])
+                cnt += 1
                     
             running_loss.append(loss.mean().item())
             
