@@ -19,7 +19,7 @@ class Validator():
         self.loss_func = loss_func
         self.optimizer = optimizer
         
-    def validate(self, z, min_loss, max_iter):
+    def validate(self, z, min_loss, max_iter=60):
         # Never set model to eval mode, it requires gradients!!!
         running_loss = []
         for idx, img, _ in tqdm(self.val_loader, leave=False):
