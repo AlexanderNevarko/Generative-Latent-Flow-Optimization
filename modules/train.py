@@ -23,7 +23,8 @@ class GLOTrainer():
     def train(self, n_epochs,
               train_loader,
               loss_func,
-              optimizer,
+              generator_optimizer,
+              z_optimizer,
               exp_name,
               model_path):
         self.model.train()
@@ -35,11 +36,13 @@ class GLOTrainer():
                 # import ipdb; ipdb.set_trace()
                 idx, img = idx.long().to(self.device), img.float().to(self.device)
                 
-                optimizer.zero_grad()
+                generator_optimizer.zero_grad()
+                z_optimizer.zero_grad()
                 preds = self.model(idx=idx)
                 loss = loss_func(preds, img)
                 loss.backward()
-                optimizer.step()
+                generator_optimizer.step()
+                z_optimizer.step()
                 # Don't forget to reproject z
                 with torch.no_grad():
                     self.model.z[idx] = \
