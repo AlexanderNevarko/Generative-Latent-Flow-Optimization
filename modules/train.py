@@ -40,7 +40,7 @@ class GLOTrainer():
                 z_optimizer.zero_grad()
                 preds = self.model(idx=idx)
                 loss = loss_func(preds, img)
-                loss.backward()
+                loss.backward(retain_graph=True)
                 generator_optimizer.step()
                 z_optimizer.step()
                 # Don't forget to reproject z
