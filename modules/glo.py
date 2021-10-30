@@ -81,9 +81,9 @@ class GLOGenerator(nn.Module):
             out = self.res_blocks[i].forward(out, noise)
         out = self.bn.forward(out)
         out = self.act.forward(out)
+        out = F.interpolate(out, size=self.output_size, mode='bilinear')
         out = self.end_conv(out)
         out = self.sigmoid.forward(out)
-        out = F.interpolate(out, size=self.output_size)
 
         assert out.shape == (noise.shape[0], self.out_channels, *self.output_size)
         return out

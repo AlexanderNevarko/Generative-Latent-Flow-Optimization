@@ -86,7 +86,7 @@ class PreActResBlock(nn.Module):
         self.conv2 = spectral_norm(nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1))
         
         if upsample:
-            self.ups = nn.Upsample(scale_factor=2, mode='nearest')
+            self.ups = nn.Upsample(scale_factor=2, mode='bilinear')
         
         if batchnorm:
             self.bn1 = AdaptiveBatchNorm(in_channels, noise_channels)
