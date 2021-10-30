@@ -69,8 +69,8 @@ class GLOGenerator(nn.Module):
                                                   noise_channels, upsample=True))
         self.bn = nn.BatchNorm2d(min_channels)
         self.end_conv = spectral_norm(nn.Conv2d(min_channels, self.out_channels, kernel_size=3, padding=1))
-        self.fine_tune_block = nn.Sequential([nn.ReLU(), 
-                                              nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, padding=1)])
+        self.fine_tune_block = nn.Sequential(nn.ReLU(), 
+                                             nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, padding=1))
         self.sigmoid = nn.Sigmoid()
         
     def forward(self, noise):
