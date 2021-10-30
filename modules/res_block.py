@@ -108,17 +108,18 @@ class PreActResBlock(nn.Module):
             inputs = self.ups(inputs)
         
         identity = inputs
-        if self.batchnorm:
-            out = self.bn1.forward(inputs, noise)
-        else:
-            out = self.bn1(inputs)
+        out = inputs
+        # if self.batchnorm:
+        #     out = self.bn1.forward(inputs, noise)
+        # else:
+        #     out = self.bn1(inputs)
         out = self.act.forward(out)
         out = self.conv1(out)
         
-        if self.batchnorm:
-            out = self.bn2.forward(out, noise)
-        else:
-            out = self.bn2(out)
+        # if self.batchnorm:
+        #     out = self.bn2.forward(out, noise)
+        # else:
+        #     out = self.bn2(out)
         out = self.act.forward(out)
         out = self.conv2(out)
 
