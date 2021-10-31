@@ -59,6 +59,7 @@ class GLOGenerator(nn.Module):
         self.num_blocks = num_blocks
         self.min_channels = min_channels
         self.max_channels = max_channels
+        self.normalization = normalization
         
         self.act = nn.ReLU(inplace=False)
         
@@ -69,16 +70,19 @@ class GLOGenerator(nn.Module):
             if normalization == 'bn':
                 self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
                                                       noise_channels, upsample=True, batchnorm=True))
-            elif normalization == 'ada_in':
+            elif normalization == 'ada':
                 self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
                                                       noise_channels, upsample=True, ada_in=True))
-            if normalization == 'in':
+            elif normalization == 'in':
                 self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
                                                       noise_channels, upsample=True, instancenorm=True))
             else:
                 self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
                                                       noise_channels, upsample=True))
-        self.bn = nn.BatchNorm2d(min_channels)
+        if normalization == 'in':
+            self.inst_norm = nn.InstanceNorm2d(min_channels)
+        else:
+            self.bn = nn.BatchNorm2d(min_channels)
         self.end_conv = spectral_norm(nn.Conv2d(min_channels, self.out_channels, kernel_size=3, padding=1))
         # self.fine_tune_block = nn.Sequential(nn.ReLU(), 
         #                                      nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, padding=1))
@@ -92,7 +96,10 @@ class GLOGenerator(nn.Module):
         for i in range(self.num_blocks):
             # Scince we have pre-act blocks, we don't need activations inbetween
             out = self.res_blocks[i].forward(out, noise)
-        out = self.bn.forward(out)
+        if self.normalization == 'in':
+            out = self.inst_norm(out)
+        else:
+            out = self.bn.forward(out)
         out = self.act.forward(out)
         out = self.end_conv(out)
         out = F.interpolate(out, size=self.output_size, mode='bilinear')

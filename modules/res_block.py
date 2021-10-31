@@ -118,7 +118,7 @@ class PreActResBlock(nn.Module):
         identity = inputs
         out = inputs
         if self.ada_in:
-            out = self.bn1.forward(out, noise)
+            out = self.bn1(out, noise)
         elif self.batchnorm:
             out = self.bn1(out)
         elif self.instancenorm:
@@ -128,7 +128,7 @@ class PreActResBlock(nn.Module):
         out = self.conv1(out)
         
         if self.ada_in:
-            out = self.bn2.forward(out, noise)
+            out = self.bn2(out, noise)
         elif self.batchnorm:
             out = self.bn2(out)
         elif self.instancenorm:
