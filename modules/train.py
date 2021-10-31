@@ -1,6 +1,7 @@
 import os
 import torch
 import torch.nn as nn
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchvision.utils import make_grid
 from torchvision import transforms
 # import pytorch_lightning as pl
@@ -26,7 +27,9 @@ class GLOTrainer():
               generator_optimizer,
               z_optimizer,
               exp_name,
-              model_path):
+              model_path='',
+              generator_scheduler=None,
+              z_scheduler=None):
         self.model.train()
         cnt = Counter()
         self.logger.set_name(exp_name)
@@ -43,6 +46,7 @@ class GLOTrainer():
                 loss.backward(retain_graph=True)
                 generator_optimizer.step()
                 z_optimizer.step()
+                
                 # Don't forget to reproject z
                 with torch.no_grad():
                     self.model.z[idx] = \
@@ -51,6 +55,18 @@ class GLOTrainer():
                 running_loss.append(loss.item())
                 self.logger.log_metric(f'Train loss', loss.item(), epoch=epoch, step=cnt['train'])
                 cnt['train'] += 1
+            # Apply schedulers
+            if generator_scheduler is not None:
+                if isinstance(generator_scheduler, ReduceLROnPlateau):
+                    generator_scheduler.step(loss)
+                else:
+                    generator_scheduler.step()
+            if z_scheduler is not None:
+                if isinstance(z_scheduler, ReduceLROnPlateau):
+                    z_scheduler.step(loss)
+                else:
+                    z_scheduler.step()
+            # Log metrics
             self.logger.log_metric(f'Average epoch train loss', np.mean(running_loss), epoch=epoch, step=epoch)
             self.logger.log_image(visualize_image_grid(self.model), name=f'Epoch {epoch}', step=epoch)
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
