@@ -27,7 +27,7 @@ class SampleGenerator():
         return samples
     
     def get_z_dataset(self):
-        return self.z_dataset
+        return torch.tensor(self.z_dataset, requires_grad=True)
     
     @staticmethod
     def reproject_to_unit_ball(z):
