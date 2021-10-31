@@ -30,11 +30,13 @@ class GLOTrainer():
               model_path='',
               generator_scheduler=None,
               z_scheduler=None):
-        self.model.train()
-        cnt = Counter()
         self.logger.set_name(exp_name)
+        self.model.train()
+        
+        cnt = Counter()
         for epoch in range(n_epochs):
             running_loss = []
+            z_grad = torch.zeros_like(self.model.z).to(self.device)
             for i, (idx, img, target) in enumerate(tqdm(train_loader, leave=False)):
                 # import ipdb; ipdb.set_trace()
                 idx, img = idx.long().to(self.device), img.float().to(self.device)
@@ -54,6 +56,7 @@ class GLOTrainer():
                 # Log metrics
                 running_loss.append(loss.item())
                 self.logger.log_metric(f'Train loss', loss.item(), epoch=epoch, step=cnt['train'])
+                z_grad += self.model.z.grad
                 cnt['train'] += 1
             # Apply schedulers
             if generator_scheduler is not None:
@@ -69,6 +72,7 @@ class GLOTrainer():
             # Log metrics
             self.logger.log_metric(f'Average epoch train loss', np.mean(running_loss), epoch=epoch, step=epoch)
             self.logger.log_image(visualize_image_grid(self.model), name=f'Epoch {epoch}', step=epoch)
+            self.logger.log_metric(f'Average z-gradient', torch.mean(z_grad), epoch=epoch, step=epoch)
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
             

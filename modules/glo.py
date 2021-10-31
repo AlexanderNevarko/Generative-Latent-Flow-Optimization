@@ -26,6 +26,9 @@ class SampleGenerator():
         samples = self.reproject_to_unit_ball(samples)
         return samples
     
+    def get_z_dataset(self):
+        return self.z_dataset
+    
     @staticmethod
     def reproject_to_unit_ball(z):
         # Inplace reprojection
@@ -143,8 +146,7 @@ class GLOModel(nn.Module):
         self.generator = generator
         self.sample_generator = sample_generator
         self.z = nn.Parameter(
-            self.sample_generator.generate_samples(
-                n_samples=len(dataloader.dataset)))
+            self.sample_generator.get_z_dataset())
     
     def forward(self, idx=None, inputs=None):
         if inputs is not None:
