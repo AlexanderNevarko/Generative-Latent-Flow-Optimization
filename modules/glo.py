@@ -42,7 +42,8 @@ class GLOGenerator(nn.Module):
                  max_channels: int,
                  noise_channels: int,
                  num_blocks: int,
-                 dataloader):
+                 dataloader,
+                 normalization: str = '',):
         '''
         dataloader: 
             must be indesed dataloader and return (idx, img, target)
@@ -65,8 +66,18 @@ class GLOGenerator(nn.Module):
         
         self.res_blocks = nn.ModuleList()
         for i in range(num_blocks):
-            self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
-                                                  noise_channels, upsample=True))
+            if normalization == 'bn':
+                self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
+                                                      noise_channels, upsample=True, batchnorm=True))
+            elif normalization == 'ada_in':
+                self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
+                                                      noise_channels, upsample=True, ada_in=True))
+            if normalization == 'in':
+                self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
+                                                      noise_channels, upsample=True, instancenorm=True))
+            else:
+                self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
+                                                      noise_channels, upsample=True))
         self.bn = nn.BatchNorm2d(min_channels)
         self.end_conv = spectral_norm(nn.Conv2d(min_channels, self.out_channels, kernel_size=3, padding=1))
         # self.fine_tune_block = nn.Sequential(nn.ReLU(), 

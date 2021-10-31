@@ -71,7 +71,9 @@ class PreActResBlock(nn.Module):
                  in_channels: int,
                  out_channels: int,
                  noise_channels: int = None,
+                 ada_in: bool = False,
                  batchnorm: bool = False,
+                 instancenorm: bool = False,
                  upsample: bool = False,
                  downsample: bool = False):
         super(PreActResBlock, self).__init__()
@@ -79,6 +81,8 @@ class PreActResBlock(nn.Module):
         self.out_channels = out_channels
         self.noise_channels = noise_channels
         self.batchnorm = batchnorm
+        self.ada_in = ada_in
+        self.instancenorm = instancenorm
         self.upsample = upsample
         self.downsample = downsample
         self.act = nn.ReLU(inplace=False)
@@ -88,12 +92,16 @@ class PreActResBlock(nn.Module):
         if upsample:
             self.ups = nn.Upsample(scale_factor=2, mode='bilinear')
         
-        if batchnorm:
+        if ada_in:
             self.bn1 = AdaptiveBatchNorm(in_channels, noise_channels)
             self.bn2 = AdaptiveBatchNorm(out_channels, noise_channels)
-        else:
+        elif instancenorm:
+            self.in1 = nn.InstanceNorm2d(in_channels)
+            self.in2 = nn.InstanceNorm2d(out_channels)
+        elif batchnorm:
             self.bn1 = nn.BatchNorm2d(in_channels)
             self.bn2 = nn.BatchNorm2d(out_channels)
+            
         if in_channels != out_channels:
             self.skip = spectral_norm(nn.Conv2d(in_channels, out_channels, kernel_size=1))
         else:
@@ -109,17 +117,22 @@ class PreActResBlock(nn.Module):
         
         identity = inputs
         out = inputs
-        # if self.batchnorm:
-        #     out = self.bn1.forward(inputs, noise)
-        # else:
-        #     out = self.bn1(inputs)
+        if self.ada_in:
+            out = self.bn1.forward(out, noise)
+        elif self.batchnorm:
+            out = self.bn1(out)
+        elif self.instancenorm:
+            out = self.in1(out)
+        
         out = self.act.forward(out)
         out = self.conv1(out)
         
-        # if self.batchnorm:
-        #     out = self.bn2.forward(out, noise)
-        # else:
-        #     out = self.bn2(out)
+        if self.ada_in:
+            out = self.bn2.forward(out, noise)
+        elif self.batchnorm:
+            out = self.bn2(out)
+        elif self.instancenorm:
+            out = self.in2(out)
         out = self.act.forward(out)
         out = self.conv2(out)
 
