@@ -72,7 +72,7 @@ class GLOTrainer():
             # Log metrics
             self.logger.log_metric(f'Average epoch train loss', np.mean(running_loss), epoch=epoch, step=epoch)
             self.logger.log_image(visualize_image_grid(self.model), name=f'Epoch {epoch}', step=epoch)
-            self.logger.log_metric(f'Average z-gradient', torch.mean(z_grad), epoch=epoch, step=epoch)
+            self.logger.log_metric(f'Average z-gradient', torch.mean(torch.abs(z_grad)), epoch=epoch, step=epoch)
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
             
