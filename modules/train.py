@@ -61,12 +61,12 @@ class GLOTrainer():
             # Apply schedulers
             if generator_scheduler is not None:
                 if isinstance(generator_scheduler, ReduceLROnPlateau):
-                    generator_scheduler.step(loss)
+                    generator_scheduler.step(torch.mean(torch.tensor(running_loss)))
                 else:
                     generator_scheduler.step()
             if z_scheduler is not None:
                 if isinstance(z_scheduler, ReduceLROnPlateau):
-                    z_scheduler.step(loss)
+                    z_scheduler.step(torch.mean(torch.tensor(running_loss)))
                 else:
                     z_scheduler.step()
             # Log metrics
