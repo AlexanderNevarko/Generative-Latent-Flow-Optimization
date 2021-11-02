@@ -107,7 +107,7 @@ def visualize_paired_results(glo_model, dataloader, img_num=8):
     idx = torch.randint(low=0, high=len(glo_model.z), size=(img_num, ))
     preds = glo_model(idx=idx).detach().cpu()
     img = []
-    for i in range(img_num):
+    for i in idx:
         img.append(dataloader.dataset[i][1].detach().cpu())
     
     img_grid = make_grid(img, nrow=1)
