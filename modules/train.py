@@ -71,7 +71,12 @@ class GLOTrainer():
                     z_scheduler.step()
             # Log metrics
             self.logger.log_metric(f'Average epoch train loss', np.mean(running_loss), epoch=epoch, step=epoch)
-            self.logger.log_image(visualize_image_grid(self.model), name=f'Epoch {epoch}', step=epoch)
+            
+            try:
+                self.logger.log_image(visualize_paired_results(self.model, train_loader, 16), name=f'Epoch {epoch}', step=epoch)
+            except Exception as e:
+                self.logger.log_image(visualize_image_grid(self.model), name=f'Epoch {epoch}', step=epoch)
+            
             self.logger.log_metric(f'Average z-gradient', torch.mean(torch.abs(z_grad)), epoch=epoch, step=epoch)
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
@@ -91,7 +96,29 @@ def visualize_image_grid(glo_model, inputs=None):
         transforms.ToPILImage(),
     ])
     return transform(grid)
+
+def visualize_paired_results(glo_model, dataloader, img_num=8):
+    '''
+    glo_model: model
+    dataloader: train dataloader
+    img_num: number of images to draw
+    '''
     
+    idx = torch.randint(low=0, high=len(glo_model.z), size=(img_num, ))
+    preds = glo_model(idx=idx).detach().cpu()
+    img = []
+    for i in range(img_num):
+        img.append(dataloader.dataset[i][1].detach().cpu())
+    
+    img_grid = make_grid(img, nrow=1)
+    pred_grid = make_grid(preds, nrow=1)
+    pairs = torch.empty(2, *img_grid.shape, dtype=torch.float32)
+    pairs[0] = pred_grid
+    pairs[1] = img_grid
+    
+    grid = make_grid(pairs, nrow=2)
+    transform = transforms.ToPILImage()
+    return transform(grid)    
     
 
 
