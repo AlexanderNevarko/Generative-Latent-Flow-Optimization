@@ -15,7 +15,7 @@ from collections import Counter
 class GLOTrainer():
     def __init__(self, 
                  model, use_gpu,
-                 logger):
+                 logger=None):
         self.model = model
         self.logger = logger
         self.use_gpu = use_gpu
@@ -30,7 +30,8 @@ class GLOTrainer():
               model_path='',
               generator_scheduler=None,
               z_scheduler=None):
-        self.logger.set_name(exp_name)
+        if self.logger is not None:
+            self.logger.set_name(exp_name)
         self.model.train()
         
         cnt = Counter()
@@ -38,7 +39,6 @@ class GLOTrainer():
             running_loss = []
             z_grad = torch.zeros_like(self.model.z.weight).to(self.device)
             for i, (idx, img, target) in enumerate(tqdm(train_loader, leave=False)):
-                # import ipdb; ipdb.set_trace()
                 idx, img = idx.long().to(self.device), img.float().to(self.device)
                 
                 generator_optimizer.zero_grad()
@@ -55,8 +55,9 @@ class GLOTrainer():
                         self.model.sample_generator.reproject_to_unit_ball(self.model.z.weight[idx])
                 # Log metrics
                 running_loss.append(loss.item())
-                self.logger.log_metric(f'Train loss', loss.item(), epoch=epoch, step=cnt['train'])
-                z_grad += self.model.z.weight.grad
+                if self.logger is not None:
+                    self.logger.log_metric(f'Train loss', loss.item(), epoch=epoch, step=cnt['train'])
+                z_grad += self.model.z.weight.grad.to_dense()
                 cnt['train'] += 1
             # Apply schedulers
             if generator_scheduler is not None:
@@ -70,14 +71,14 @@ class GLOTrainer():
                 else:
                     z_scheduler.step()
             # Log metrics
-            self.logger.log_metric(f'Average epoch train loss', np.mean(running_loss), epoch=epoch, step=epoch)
-            
-            try:
-                self.logger.log_image(visualize_paired_results(self.model, train_loader, 16), name=f'Epoch {epoch}', step=epoch)
-            except Exception as e:
-                self.logger.log_image(visualize_image_grid(self.model), name=f'Epoch {epoch}', step=epoch)
-            
-            self.logger.log_metric(f'Average z-gradient', torch.mean(torch.abs(z_grad)), epoch=epoch, step=epoch)
+            if self.logger is not None:
+                self.logger.log_metric(f'Average epoch train loss', np.mean(running_loss), epoch=epoch, step=epoch)
+                try:
+                    self.logger.log_image(visualize_paired_results(self.model, train_loader, 16), 
+                                          name=f'Epoch {epoch}', step=epoch)
+                except Exception as e:
+                    self.logger.log_image(visualize_image_grid(self.model), name=f'Epoch {epoch}', step=epoch)
+                self.logger.log_metric(f'Average z-gradient', torch.mean(torch.abs(z_grad)), epoch=epoch, step=epoch)
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
             
@@ -104,7 +105,7 @@ def visualize_paired_results(glo_model, dataloader, img_num=8):
     img_num: number of images to draw
     '''
     
-    idx = torch.randint(low=0, high=len(glo_model.z.weigth), size=(img_num, ))
+    idx = torch.randint(low=0, high=len(glo_model.z.weight), size=(img_num, ))
     preds = glo_model(idx=idx).detach().cpu()
     img = []
     for i in idx:

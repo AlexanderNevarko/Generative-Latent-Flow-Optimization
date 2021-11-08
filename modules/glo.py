@@ -27,7 +27,7 @@ class SampleGenerator():
         return samples
     
     def get_z_dataset(self):
-        return torch.tensor(self.z_dataset, requires_grad=True)
+        return SampleGenerator.reproject_to_unit_ball(torch.tensor(self.z_dataset, requires_grad=True))
     
     @staticmethod
     def reproject_to_unit_ball(z):
@@ -141,12 +141,13 @@ class GLOGenerator(nn.Module):
         
 
 class GLOModel(nn.Module):
-    def __init__(self, generator, dataloader, sample_generator):
+    def __init__(self, generator, dataloader, sample_generator, sparse):
         super(GLOModel, self).__init__()
         self.generator = generator
         self.sample_generator = sample_generator
         self.z = nn.Embedding.from_pretrained(self.sample_generator.get_z_dataset(),
-                                              sparse=True, freeze=False)
+                                              sparse=sparse, freeze=False)
+        self.z.requires_grad = True
     
     def forward(self, idx=None, inputs=None):
         if inputs is not None:
