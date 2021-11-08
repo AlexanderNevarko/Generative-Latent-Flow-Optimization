@@ -36,7 +36,7 @@ class GLOTrainer():
         cnt = Counter()
         for epoch in range(n_epochs):
             running_loss = []
-            z_grad = torch.zeros_like(self.model.z).to(self.device)
+            z_grad = torch.zeros_like(self.model.z.weight).to(self.device)
             for i, (idx, img, target) in enumerate(tqdm(train_loader, leave=False)):
                 # import ipdb; ipdb.set_trace()
                 idx, img = idx.long().to(self.device), img.float().to(self.device)
@@ -51,12 +51,12 @@ class GLOTrainer():
                 
                 # Don't forget to reproject z
                 with torch.no_grad():
-                    self.model.z[idx] = \
-                        self.model.sample_generator.reproject_to_unit_ball(self.model.z[idx])
+                    self.model.z.weight[idx] = \
+                        self.model.sample_generator.reproject_to_unit_ball(self.model.z.weight[idx])
                 # Log metrics
                 running_loss.append(loss.item())
                 self.logger.log_metric(f'Train loss', loss.item(), epoch=epoch, step=cnt['train'])
-                z_grad += self.model.z.grad
+                z_grad += self.model.z.weight.grad
                 cnt['train'] += 1
             # Apply schedulers
             if generator_scheduler is not None:
@@ -84,11 +84,11 @@ class GLOTrainer():
                 
 def visualize_image_grid(glo_model, inputs=None):
     if inputs is not None:
-        inputs = inputs.to(glo_model.z.device)
+        inputs = inputs.to(glo_model.z.weight.device)
         img = glo_model(inputs=inputs)
     else:    
-        idx_num = len(glo_model.z)
-        random_idx = torch.randint(low=0, high=idx_num, size=(16,), device=glo_model.z.device)
+        idx_num = len(glo_model.z.weight)
+        random_idx = torch.randint(low=0, high=idx_num, size=(16,), device=glo_model.z.weight.device)
         img = glo_model(idx=random_idx)
     img = img.detach().cpu()
     grid = make_grid(img, nrow=len(img) // 4)
@@ -104,7 +104,7 @@ def visualize_paired_results(glo_model, dataloader, img_num=8):
     img_num: number of images to draw
     '''
     
-    idx = torch.randint(low=0, high=len(glo_model.z), size=(img_num, ))
+    idx = torch.randint(low=0, high=len(glo_model.z.weigth), size=(img_num, ))
     preds = glo_model(idx=idx).detach().cpu()
     img = []
     for i in idx:

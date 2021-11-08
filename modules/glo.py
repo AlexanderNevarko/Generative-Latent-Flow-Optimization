@@ -145,13 +145,13 @@ class GLOModel(nn.Module):
         super(GLOModel, self).__init__()
         self.generator = generator
         self.sample_generator = sample_generator
-        self.z = nn.Parameter(
-            self.sample_generator.get_z_dataset())
+        self.z = nn.Embedding.from_pretrained(self.sample_generator.get_z_dataset(),
+                                              sparse=True, freeze=False)
     
     def forward(self, idx=None, inputs=None):
         if inputs is not None:
             return self.generator(inputs)
-        return self.generator(self.z[idx])
+        return self.generator(self.z(torch.tensor(idx)))
     
     # def optimize_to_img(self, img, loss_func, min_loss, optimizer, init_z=None):
     #     return self.generator.optimize_to_img(img, loss_func, min_loss, optimizer, init_z)
