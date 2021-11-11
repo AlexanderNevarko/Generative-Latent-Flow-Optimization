@@ -85,7 +85,7 @@ class GLOGenerator(nn.Module):
         self.end_conv = spectral_norm(nn.Conv2d(min_channels, self.out_channels, kernel_size=3, padding=1))
         # self.fine_tune_block = nn.Sequential(nn.ReLU(), 
         #                                      nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, padding=1))
-        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Tanh()
         
     def forward(self, noise):
         bs = noise.shape[0]
@@ -104,7 +104,7 @@ class GLOGenerator(nn.Module):
         out = F.interpolate(out, size=self.output_size, mode='bilinear')
         # out - self.fine_tune_block(out)
         
-        out = self.tanh(out)
+        out = self.sigmoid(out)
 
         assert out.shape == (noise.shape[0], self.out_channels, *self.output_size)
         return out
