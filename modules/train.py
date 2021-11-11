@@ -38,6 +38,7 @@ class GLOTrainer():
         for epoch in range(n_epochs):
             running_loss = []
             z_grad = torch.zeros_like(self.model.z.weight).to(self.device)
+            self.model.train()
             for i, (idx, img, target) in enumerate(tqdm(train_loader, leave=False)):
                 idx, img = idx.long().to(self.device), img.float().to(self.device)
                 
@@ -71,6 +72,7 @@ class GLOTrainer():
                 else:
                     z_scheduler.step()
             # Log metrics
+            self.model.eval()
             if self.logger is not None:
                 self.logger.log_metric(f'Average epoch train loss', np.mean(running_loss), epoch=epoch, step=epoch)
                 try:
