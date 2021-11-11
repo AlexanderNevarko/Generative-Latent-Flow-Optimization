@@ -7,7 +7,7 @@ from torch.nn.utils import spectral_norm
 from sklearn.decomposition import PCA
 from scipy.stats import gaussian_kde
 
-from .res_block import PreActResBlock
+from .res_block import PreActResBlock, AdaptiveBatchNorm
 
 
 class SampleGenerator():
@@ -46,7 +46,8 @@ class GLOGenerator(nn.Module):
                  noise_channels: int,
                  num_blocks: int,
                  dataloader,
-                 normalization: str = '',):
+                 normalization: str = '',
+                 lrelu_slope: float = 0.2):
         '''
         dataloader: 
             must be indesed dataloader and return (idx, img, target)
@@ -70,26 +71,21 @@ class GLOGenerator(nn.Module):
         
         self.res_blocks = nn.ModuleList()
         for i in range(num_blocks):
-            if normalization == 'bn':
-                self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
-                                                      noise_channels, upsample=True, batchnorm=True))
-            elif normalization == 'ada':
-                self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
-                                                      noise_channels, upsample=True, ada_in=True))
-            elif normalization == 'in':
-                self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
-                                                      noise_channels, upsample=True, instancenorm=True))
-            else:
-                self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
-                                                      noise_channels, upsample=True))
+            self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
+                                                  noise_channels, upsample=True, 
+                                                  lrelu_slope=lrelu_slope, norm=normalization))
         if normalization == 'in':
-            self.inst_norm = nn.InstanceNorm2d(min_channels)
+            self.last_norm = nn.InstanceNorm2d(min_channels)
+        elif normalization == 'ada':
+            self.last_norm = AdaptiveBatchNorm(min_channels, noise_channels)
+        elif normalization == 'gn':
+            self.last_norm = nn.GroupNorm(num_groups=8, num_channels=min_channels)
         else:
-            self.bn = nn.BatchNorm2d(min_channels)
+            self.last_norm = nn.BatchNorm2d(min_channels)
         self.end_conv = spectral_norm(nn.Conv2d(min_channels, self.out_channels, kernel_size=3, padding=1))
         # self.fine_tune_block = nn.Sequential(nn.ReLU(), 
         #                                      nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, padding=1))
-        self.sigmoid = nn.Sigmoid()
+        self.tanh = nn.Tanh()
         
     def forward(self, noise):
         bs = noise.shape[0]
@@ -98,17 +94,17 @@ class GLOGenerator(nn.Module):
         
         for i in range(self.num_blocks):
             # Scince we have pre-act blocks, we don't need activations inbetween
-            out = self.res_blocks[i].forward(out, noise)
-        if self.normalization == 'in':
-            out = self.inst_norm(out)
+            out = self.res_blocks[i](out, noise)
+        if self.normalization == 'ada':
+            out = self.last_norm(out, noise)
         else:
-            out = self.bn.forward(out)
-        out = self.act.forward(out)
+            out = self.last_norm(out)
+        out = self.act(out)
         out = self.end_conv(out)
         out = F.interpolate(out, size=self.output_size, mode='bilinear')
         # out - self.fine_tune_block(out)
         
-        out = self.sigmoid.forward(out)
+        out = self.tanh(out)
 
         assert out.shape == (noise.shape[0], self.out_channels, *self.output_size)
         return out

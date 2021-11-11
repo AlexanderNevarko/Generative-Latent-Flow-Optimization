@@ -71,36 +71,36 @@ class PreActResBlock(nn.Module):
                  in_channels: int,
                  out_channels: int,
                  noise_channels: int = None,
-                 ada_in: bool = False,
-                 batchnorm: bool = False,
-                 instancenorm: bool = False,
+                 lrelu_slope: float = 0.2,
+                 norm: str = 'ada',
                  upsample: bool = False,
                  downsample: bool = False):
         super(PreActResBlock, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.noise_channels = noise_channels
-        self.batchnorm = batchnorm
-        self.ada_in = ada_in
-        self.instancenorm = instancenorm
-        self.upsample = upsample
+        self.norm = norm
         self.downsample = downsample
-        self.act = nn.ReLU(inplace=False)
+        self.upsample = upsample
+        self.act = nn.LeakyReLU(lrelu_slope, inplace=False)
         self.conv1 = spectral_norm(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
         self.conv2 = spectral_norm(nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1))
         
         if upsample:
             self.ups = nn.Upsample(scale_factor=2, mode='bilinear')
         
-        if ada_in:
-            self.bn1 = AdaptiveBatchNorm(in_channels, noise_channels)
-            self.bn2 = AdaptiveBatchNorm(out_channels, noise_channels)
-        elif instancenorm:
-            self.in1 = nn.InstanceNorm2d(in_channels)
-            self.in2 = nn.InstanceNorm2d(out_channels)
-        elif batchnorm:
-            self.bn1 = nn.BatchNorm2d(in_channels)
-            self.bn2 = nn.BatchNorm2d(out_channels)
+        if norm == 'ada':
+            self.n1 = AdaptiveBatchNorm(in_channels, noise_channels)
+            self.n2 = AdaptiveBatchNorm(out_channels, noise_channels)
+        elif norm == 'in':
+            self.n1 = nn.InstanceNorm2d(in_channels)
+            self.n2 = nn.InstanceNorm2d(out_channels)
+        elif norm == 'bn':
+            self.n1 = nn.BatchNorm2d(in_channels)
+            self.n2 = nn.BatchNorm2d(out_channels)
+        elif norm == 'gn':
+            self.n1 = nn.GroupNorm(num_groups=8, num_channels=in_channels)
+            self.n2 = nn.GroupNorm(num_groups=8, num_channels=out_channels)
             
         if in_channels != out_channels:
             self.skip = spectral_norm(nn.Conv2d(in_channels, out_channels, kernel_size=1))
@@ -117,22 +117,18 @@ class PreActResBlock(nn.Module):
         
         identity = inputs
         out = inputs
-        if self.ada_in:
-            out = self.bn1(out, noise)
-        elif self.batchnorm:
-            out = self.bn1(out)
-        elif self.instancenorm:
-            out = self.in1(out)
+        if self.norm == 'ada':
+            out = self.n1(out, noise)
+        elif self.norm in ['in', 'bn', 'gn']:
+            out = self.n1(out)
         
         out = self.act.forward(out)
         out = self.conv1(out)
         
-        if self.ada_in:
-            out = self.bn2(out, noise)
-        elif self.batchnorm:
-            out = self.bn2(out)
-        elif self.instancenorm:
-            out = self.in2(out)
+        if self.norm == 'ada':
+            out = self.n2(out, noise)
+        elif self.norm in ['in', 'bn', 'gn']:
+            out = self.n2(out)
         out = self.act.forward(out)
         out = self.conv2(out)
 
