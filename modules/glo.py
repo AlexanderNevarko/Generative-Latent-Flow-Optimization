@@ -20,7 +20,7 @@ class SampleGenerator():
         '''
         _, img, target = zip(*[(idx, img_, tg) for idx, img_, tg in dataloader])
         img = torch.cat(img)
-        self.target = torch.cat(target, target)
+        self.target = torch.cat(target)
         img = img.view(img.shape[0], -1).numpy()
         self.pca = PCA(n_components=z_dim)
         self.z_dataset = self.pca.fit_transform(img)
