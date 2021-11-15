@@ -18,8 +18,9 @@ class SampleGenerator():
         z_dim: int, latent vectors dimentionality
         bw_method: bw_method for gaussian kde from scipy
         '''
-        _, img = zip(*[(idx, img_) for idx, img_, _ in dataloader])
+        _, img, target = zip(*[(idx, img_, tg) for idx, img_, tg in dataloader])
         img = torch.cat(img)
+        self.target = torch.cat(target, target)
         img = img.view(img.shape[0], -1).numpy()
         self.pca = PCA(n_components=z_dim)
         self.z_dataset = self.pca.fit_transform(img)
@@ -32,6 +33,9 @@ class SampleGenerator():
         samples = self.reproject_to_unit_ball(samples)
         return samples
     
+    def get_classes(self):
+        return self.target
+        
     def get_z_dataset(self):
         return SampleGenerator.reproject_to_unit_ball(torch.tensor(self.z_dataset, requires_grad=True))
     
