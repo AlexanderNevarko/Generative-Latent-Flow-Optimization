@@ -13,28 +13,29 @@ from .glo import SampleGenerator
 
 class Validator():
     
-    def __init__(self, model, val_loader, loss_func, optimizer):
+    def __init__(self, model, val_loader):
         self.model = model
         self.val_loader = val_loader
-        self.loss_func = loss_func
-        self.optimizer = optimizer
+        self.device = next(self.model.parameters()).device
         
-    def validate(self, z, min_loss, max_iter=60):
-        # Never set model to eval mode, it requires gradients!!!
+    def validate(self, z, min_loss, loss_func, optimizer, max_iter=60):
+        '''
+        Never set model to eval mode, it requires gradients!!!
+        '''
         running_loss = []
         for idx, img, _ in tqdm(self.val_loader, leave=False):
             # import ipdb; ipdb.set_trace()
-            idx, img = idx.long().to(self.model.z.device), img.float().to(self.model.z.device)
+            idx, img = idx.long().to(self.device), img.float().to(self.device)
             bs = len(idx)
             loss = torch.full(size=(bs, ), fill_value=min_loss+1.0)
             cnt = 0
             while torch.any(min_loss < loss) and cnt < max_iter:
                 # import ipdb; ipdb.set_trace()
-                self.optimizer.zero_grad()
+                optimizer.zero_grad()
                 preds = self.model(inputs=z[idx])
-                loss = self.loss_func(preds, img)
+                loss = loss_func(preds, img)
                 loss.backward()
-                self.optimizer.step()
+                optimizer.step()
                 with torch.no_grad():
                     z[idx] = SampleGenerator.reproject_to_unit_ball(z[idx])
                 cnt += 1

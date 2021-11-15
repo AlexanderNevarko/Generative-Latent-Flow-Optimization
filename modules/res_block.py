@@ -83,8 +83,8 @@ class PreActResBlock(nn.Module):
         self.downsample = downsample
         self.upsample = upsample
         self.act = nn.LeakyReLU(lrelu_slope, inplace=False)
-        self.conv1 = spectral_norm(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
-        self.conv2 = spectral_norm(nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1))
+        self.conv1 = spectral_norm(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False))
+        self.conv2 = spectral_norm(nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False))
         
         if upsample:
             self.ups = nn.Upsample(scale_factor=2, mode='bilinear')

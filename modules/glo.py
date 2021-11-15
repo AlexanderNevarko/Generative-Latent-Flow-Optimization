@@ -12,6 +12,12 @@ from .res_block import PreActResBlock, AdaptiveBatchNorm
 
 class SampleGenerator():
     def __init__(self, dataloader, z_dim, bw_method):
+        '''
+        dataloader: test or train dataloder. 
+                    IMPORTANT: requires unshuffled data for better initialization
+        z_dim: int, latent vectors dimentionality
+        bw_method: bw_method for gaussian kde from scipy
+        '''
         _, img = zip(*[(idx, img_) for idx, img_, _ in dataloader])
         img = torch.cat(img)
         img = img.view(img.shape[0], -1).numpy()
