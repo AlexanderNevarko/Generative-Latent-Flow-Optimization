@@ -20,6 +20,7 @@ class Validator():
         
     def validate(self, z, min_loss, loss_func, optimizer, max_iter=60):
         '''
+        z: nn.Embedding 
         Never set model to eval mode, it requires gradients!!!
         '''
         running_loss = []
@@ -32,12 +33,12 @@ class Validator():
             while torch.any(min_loss < loss) and cnt < max_iter:
                 # import ipdb; ipdb.set_trace()
                 optimizer.zero_grad()
-                preds = self.model(inputs=z[idx])
+                preds = self.model(inputs=z(idx))
                 loss = loss_func(preds, img)
                 loss.backward()
                 optimizer.step()
                 with torch.no_grad():
-                    z[idx] = SampleGenerator.reproject_to_unit_ball(z[idx])
+                    z.weight[idx] = SampleGenerator.reproject_to_unit_ball(z(idx))
                 cnt += 1
                     
             running_loss.append(loss.mean().item())

@@ -152,7 +152,7 @@ class GLOModel(nn.Module):
         self.generator = generator
         self.sample_generator = sample_generator
         self.z = nn.Embedding.from_pretrained(self.sample_generator.get_z_dataset(),
-                                              sparse=sparse, freeze=False)
+                                              max_norm=1, sparse=sparse, freeze=False)
         self.z.requires_grad = True
     
     def forward(self, idx=None, inputs=None):
