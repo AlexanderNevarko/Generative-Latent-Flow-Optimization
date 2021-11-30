@@ -24,7 +24,7 @@ class Validator():
         Never set model to eval mode, it requires gradients!!!
         '''
         running_loss = []
-        for idx, img, _ in tqdm(self.val_loader, leave=False):
+        for idx, img, _ in tqdm(self.val_loader, leave=True):
             # import ipdb; ipdb.set_trace()
             idx, img = idx.long().to(self.device), img.float().to(self.device)
             bs = len(idx)

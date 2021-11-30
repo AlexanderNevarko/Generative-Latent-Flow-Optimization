@@ -1,0 +1,6 @@
+comet_ml
+numpy
+torch
+scikit-learn
+torchvision
+matplotlib

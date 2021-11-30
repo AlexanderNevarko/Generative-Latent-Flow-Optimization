@@ -7,7 +7,7 @@ from torchvision import transforms
 # import pytorch_lightning as pl
 import numpy as np
 
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 from collections import Counter
 
