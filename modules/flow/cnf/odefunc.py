@@ -77,7 +77,6 @@ class ODEnet(nn.Module):
         layers = []
         activation_fns = []
         hidden_shape = input_shape
-
         for dim_out in (hidden_dims + (input_shape[0],)):
 
             layer_kwargs = {}

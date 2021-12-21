@@ -44,6 +44,7 @@ class MovingBatchNormNd(nn.Module):
             return self._forward(x, logpx)
 
     def _forward(self, x, logpx=None):
+        # import ipdb; ipdb.set_trace()
         num_channels = x.size(-1)
         used_mean = self.running_mean.clone().detach()
         used_var = self.running_var.clone().detach()

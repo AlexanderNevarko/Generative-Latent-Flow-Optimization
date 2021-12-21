@@ -4,8 +4,8 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchvision.utils import make_grid
 from torchvision import transforms
-# import pytorch_lightning as pl
 import numpy as np
+from .visualization import visualize_image_grid, visualize_paired_results
 
 from tqdm.notebook import tqdm
 
@@ -83,88 +83,3 @@ class GLOTrainer():
                 self.logger.log_metric(f'Average z-gradient', torch.mean(torch.abs(z_grad)), epoch=epoch, step=epoch)
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
-            
-                
-def visualize_image_grid(glo_model, inputs=None):
-    if inputs is not None:
-        inputs = inputs.to(glo_model.z.weight.device)
-        img = glo_model(inputs=inputs)
-    else:    
-        idx_num = len(glo_model.z.weight)
-        random_idx = torch.randint(low=0, high=idx_num, size=(16,), device=glo_model.z.weight.device)
-        img = glo_model(idx=random_idx)
-    img = img.detach().cpu()
-    grid = make_grid(img, nrow=len(img) // 4)
-    transform = transforms.Compose([
-        transforms.ToPILImage(),
-    ])
-    return transform(grid)
-
-def visualize_paired_results(glo_model, dataloader, img_num=8):
-    '''
-    glo_model: model
-    dataloader: train dataloader
-    img_num: number of images to draw
-    '''
-    
-    idx = torch.randint(low=0, high=len(glo_model.z.weight), size=(img_num, ))
-    preds = glo_model(idx=idx.to(glo_model.z.weight.device)).detach().cpu()
-    img = []
-    for i in idx:
-        img.append(dataloader.dataset[i][1].detach().cpu())
-    
-    img_grid = make_grid(img, nrow=1)
-    pred_grid = make_grid(preds, nrow=1)
-    pairs = torch.empty(2, *img_grid.shape, dtype=torch.float32)
-    pairs[0] = pred_grid
-    pairs[1] = img_grid
-    
-    grid = make_grid(pairs, nrow=2)
-    transform = transforms.ToPILImage()
-    return transform(grid)    
-    
-
-
-
-# class GLOOptimizer(torch.optim.Adam):
-#     def __init__(self, *args, z_param, zlr):
-#         super(GLOOptimizer, self).__init__(*args)
-#         self.z_param = z_param
-#         self.zlr = zlr
-    
-#     def step(self, closure=None, z_grad=None):
-#         loss = super().step()
-        
-#         self.z_param -= self.zlr * z_grad
-#         self.z_param /= torch.max(torch.tensor([torch.sqrt(torch.sum(self.z_param**2)), 1.0]))
-#         return loss
-        
-
-
-# class GLO_pl(pl.LightningModule):
-    
-#     def __init__(self, model, loss, zlr, experiment, exp_name):
-#         super(GLO_pl, self).__init__()
-#         self.model = model
-#         self.loss = loss
-#         self.zlr = zlr
-#         self.experiment = experiment
-#         self.experiment.set_name(exp_name)
-        
-#     def training_step(self, batch, bacth_idx):
-#         z, img = batch
-#         pred = self.model(z)
-#         loss = self.loss(pred, img)
-#         self.experiment.log_metric()
-#         return loss
-    
-#     def validation_step(self, batch, bacth_idx):
-#         z, img = batch.batch
-#         pred = self.model(z)
-#         loss = self.loss(pred, img)
-        
-    
-#     def configure_optimizers(self):
-#         return GLOOptimizer(self.model.parameters(), 
-#                             z_param=self.model.z, 
-#                             zlr=self.zlr)

@@ -17,9 +17,8 @@ class IdxDataset(Dataset):
     
     
 class LatentsDataset(Dataset):
-    def __init__(self, latents, attributes=None, transform=None):
+    def __init__(self, latents, transform=None):
         self.lat = latents
-        self.attr = attributes
         self.transform = transform
         
     def __len__(self):
@@ -27,11 +26,26 @@ class LatentsDataset(Dataset):
     
     def __getitem__(self, idx):
         x = self.lat[idx]
-        y = self.attr[idx] if self.attr is not None else None
         
         if self.transform:
             x = self.transform(x)
-            if y is not None:
-                y = self.transform(y)
+        
+        return x
+    
+class LatentsContextualDataset(Dataset):
+    def __init__(self, latents, contexts, transform=None):
+        self.lat = latents
+        self.cont = contexts
+        self.transform = transform
+        
+    def __len__(self):
+        return len(self.lat)
+    
+    def __getitem__(self, idx):
+        x = self.lat[idx]
+        y = self.cont[idx]
+        
+        if self.transform:
+            x = self.transform(x)
         
         return x, y

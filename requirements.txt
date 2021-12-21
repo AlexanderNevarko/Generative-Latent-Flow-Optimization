@@ -3,4 +3,5 @@ numpy
 torch
 scikit-learn
 torchvision
+torchdiffeq
 matplotlib
