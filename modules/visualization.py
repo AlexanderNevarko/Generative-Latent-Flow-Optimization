@@ -54,7 +54,7 @@ def img_side_by_side(img1, img2, inv_transform=None, save_file=None):
         inv_transform = transforms.ToPILImage()
     img1, img2 = img1.detach().cpu(), img2.detach().cpu()
     grid1, grid2 = make_grid(img1, nrow=1, padding=1), make_grid(img2, nrow=1, padding=1)
-    pairs = torch.empty(2, *grid1.shape, ftype=torch.float32)
+    pairs = torch.empty(2, *grid1.shape, dtype=torch.float32)
     pairs[0], pairs[1] = grid1, grid2
     grid = make_grid(pairs, nrow=2, padding=1)
     if save_file is not None:
