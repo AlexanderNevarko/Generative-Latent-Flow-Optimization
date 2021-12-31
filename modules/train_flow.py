@@ -66,6 +66,7 @@ class FlowTrainer():
                         flow_img = self.generator(inputs=self.model.sample(16).to(self.device))
                         basic_img = self.generator(inputs=torch.tensor(self.basic.sample(16)[0], 
                                                                        dtype=torch.float).to(self.device))
+                        img_side_by_side(flow_img, basic_img, save_file=f'epoch {epoch}.png')
                         self.logger.log_image(img_side_by_side(flow_img, basic_img), 
                                               name=f'Epoch {epoch} flow vs gaussian inference',
                                               step=epoch)
