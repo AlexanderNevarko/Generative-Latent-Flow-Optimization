@@ -57,7 +57,6 @@ class FlowTrainer():
             if self.logger is not None:
                 self.logger.log_metric(f'Average epoch train loss', epoch_loss, epoch=epoch, step=epoch)
                 if self.generator is not None:
-                    self.model.eval()
                     if self.basic is None:
                         self.logger.log_image(visualize_image_grid(self.generator, 
                                                                    inputs=self.model.sample(16)), 
@@ -66,7 +65,6 @@ class FlowTrainer():
                         flow_img = self.generator(inputs=self.model.sample(16).to(self.device))
                         basic_img = self.generator(inputs=torch.tensor(self.basic.sample(16)[0], 
                                                                        dtype=torch.float).to(self.device))
-                        img_side_by_side(flow_img, basic_img, save_file=f'epoch {epoch}.png')
                         self.logger.log_image(img_side_by_side(flow_img, basic_img), 
                                               name=f'Epoch {epoch} flow vs gaussian inference',
                                               step=epoch)
