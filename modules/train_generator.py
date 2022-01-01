@@ -6,6 +6,7 @@ from torchvision.utils import make_grid
 from torchvision import transforms
 import numpy as np
 from .visualization import visualize_image_grid, visualize_paired_results
+from .loss import ValLoss
 
 from tqdm.notebook import tqdm
 
@@ -20,6 +21,7 @@ class GLOTrainer():
         self.logger = logger
         self.use_gpu = use_gpu
         self.device = torch.device('cuda') if use_gpu else torch.device('cpu')
+        self.val_loss = ValLoss().to(self.device)
     
     def train(self, n_epochs,
               train_loader,
@@ -81,5 +83,20 @@ class GLOTrainer():
                 except Exception as e:
                     self.logger.log_image(visualize_image_grid(self.model), name=f'Epoch {epoch}', step=epoch)
                 self.logger.log_metric(f'Average z-gradient', torch.mean(torch.abs(z_grad)), epoch=epoch, step=epoch)
+                
+                if epoch % 3 == 0:
+                    print('Calculate FID, IS')
+                    real_imgs, fake_imgs = [], []
+                    for idx, img, _ in train_loader:
+                        idx, img = idx.to(self.device), img.to(self.device)
+                        gen_img = self.model(idx=idx)
+                        real_imgs.append(img)
+                        fake_imgs.append(gen_img)
+                    fid, inception_score = self.val_loss(real_imgs, fake_imgs)
+                    self.logger.log_metric(f'FID on train', fid, epoch=epoch, step=epoch)
+                    self.logger.log_metric(f'IS on train', inception_score, epoch=epoch, step=epoch)
+                
+                
+                
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
