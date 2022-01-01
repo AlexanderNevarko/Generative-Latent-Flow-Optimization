@@ -8,7 +8,7 @@ import numpy as np
 
 from tqdm import tqdm
 
-from .glo import SampleGenerator
+from .glo_generator import SampleGenerator
 
 
 class Validator():
