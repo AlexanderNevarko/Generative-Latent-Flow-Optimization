@@ -25,6 +25,7 @@ class GLOTrainer():
     
     def train(self, n_epochs,
               train_loader,
+              val_loader,
               loss_func,
               generator_optimizer,
               z_optimizer,
@@ -87,7 +88,7 @@ class GLOTrainer():
                 if epoch % 3 == 0:
                     print('Calculate FID, IS')
                     real_ft, fake_ft, fake_pr = [], [], []
-                    for idx, img, _ in train_loader:
+                    for idx, img, _ in tqdm(val_loader, leave=False):
                         idx, img = idx.to(self.device), img.to(self.device)
                         gen_img = self.model(idx=idx)
                         real_features, fake_features, fake_probs = self.val_loss.calc_data([img], [gen_img])
