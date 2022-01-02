@@ -60,7 +60,7 @@ class LapLoss(nn.Module):
 
 class ValLoss(nn.Module):
     """
-    Calculates FID and IS
+    Calculates FID and IS for generator model
     """
     def __init__(self):
         super(ValLoss, self).__init__()
@@ -154,7 +154,6 @@ class ValLoss(nn.Module):
 
     @staticmethod
     def calc_fid(real_features, fake_features):
-        # TODO (2 points)
         mu_r = np.mean(real_features, axis=1)
         mu_f = np.mean(fake_features, axis=1)
         cov_r = np.cov(real_features, rowvar=True)
@@ -167,7 +166,6 @@ class ValLoss(nn.Module):
 
     @staticmethod
     def calc_is(fake_probs):
-        # TODO (2 points)
         marginal_distr = np.mean(fake_probs, axis=0)[None]
         kl_divergence = fake_probs * (np.log(fake_probs) - np.log(marginal_distr))
         kl_sum = np.sum(kl_divergence, axis=1)
