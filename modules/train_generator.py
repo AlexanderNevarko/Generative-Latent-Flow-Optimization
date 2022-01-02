@@ -90,7 +90,7 @@ class GLOTrainer():
                     for idx, img, _ in train_loader:
                         idx, img = idx.to(self.device), img.to(self.device)
                         gen_img = self.model(idx=idx)
-                        real_features, fake_features, fake_probs = self.val_loss.calc_data(img, gen_img)
+                        real_features, fake_features, fake_probs = self.val_loss.calc_data([img], [gen_img])
                         real_ft.append(real_features)
                         fake_ft.append(fake_features)
                         fake_pr.append(fake_probs)
