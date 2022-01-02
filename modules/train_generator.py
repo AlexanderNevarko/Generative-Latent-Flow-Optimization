@@ -86,13 +86,21 @@ class GLOTrainer():
                 
                 if epoch % 3 == 0:
                     print('Calculate FID, IS')
-                    real_imgs, fake_imgs = [], []
+                    real_ft, fake_ft, fake_pr = [], [], []
                     for idx, img, _ in train_loader:
                         idx, img = idx.to(self.device), img.to(self.device)
                         gen_img = self.model(idx=idx)
-                        real_imgs.append(img)
-                        fake_imgs.append(gen_img)
-                    fid, inception_score = self.val_loss(real_imgs, fake_imgs)
+                        real_features, fake_features, fake_probs = self.val_loss.calc_data(img, gen_img)
+                        real_ft.append(real_features)
+                        fake_ft.append(fake_features)
+                        fake_pr.append(fake_probs)
+                        
+                        
+                    real_ft = np.concatenate(real_ft)
+                    fake_ft = np.concatenate(fake_ft)
+                    fake_pr = np.concatenate(fake_pr)
+                    fid = self.val_loss.calc_fid(real_ft, fake_ft)
+                    inception_score = self.val_loss.calc_is(fake_pr)
                     self.logger.log_metric(f'FID on train', fid, epoch=epoch, step=epoch)
                     self.logger.log_metric(f'IS on train', inception_score, epoch=epoch, step=epoch)
                 
