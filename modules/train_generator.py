@@ -15,12 +15,11 @@ from collections import Counter
 
 class GLOTrainer():
     def __init__(self, 
-                 model, use_gpu,
+                 model,
                  logger=None):
         self.model = model
         self.logger = logger
-        self.use_gpu = use_gpu
-        self.device = torch.device('cuda') if use_gpu else torch.device('cpu')
+        self.device = next(iter(self.model.parameters())).device
         self.val_loss = ValLoss().to(self.device)
     
     def train(self, n_epochs,
@@ -85,8 +84,8 @@ class GLOTrainer():
                     self.logger.log_image(visualize_image_grid(self.model), name=f'Epoch {epoch}', step=epoch)
                 self.logger.log_metric(f'Average z-gradient', torch.mean(torch.abs(z_grad)), epoch=epoch, step=epoch)
                 
-                if epoch % 3 == 0:
-                    print('Calculate FID, IS')
+                if epoch % 5 == 0:
+                    print('Calculating FID, IS')
                     real_ft, fake_ft, fake_pr = [], [], []
                     for idx, img, _ in tqdm(val_loader, leave=False):
                         idx, img = idx.to(self.device), img.to(self.device)
@@ -100,8 +99,8 @@ class GLOTrainer():
                     real_ft = np.concatenate(real_ft)
                     fake_ft = np.concatenate(fake_ft)
                     fake_pr = np.concatenate(fake_pr)
-                    fid = self.val_loss.calc_fid(real_ft, fake_ft)
-                    inception_score = self.val_loss.calc_is(fake_pr)
+                    fid = ValLoss.calc_fid(real_ft, fake_ft)
+                    inception_score = ValLoss.calc_is(fake_pr)
                     self.logger.log_metric(f'FID on train', fid, epoch=epoch, step=epoch)
                     self.logger.log_metric(f'IS on train', inception_score, epoch=epoch, step=epoch)
                 
