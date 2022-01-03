@@ -85,7 +85,7 @@ class GLOTrainer():
                 self.logger.log_metric(f'Average z-gradient', torch.mean(torch.abs(z_grad)), epoch=epoch, step=epoch)
                 
                 if epoch % 5 == 0:
-                    print('Calculating FID, IS')
+                    print(f'Calculating FID and IS on epoch {epoch}')
                     real_ft, fake_ft, fake_pr = [], [], []
                     for idx, img, _ in tqdm(val_loader, leave=False):
                         idx, img = idx.to(self.device), img.to(self.device)

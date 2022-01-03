@@ -36,6 +36,7 @@ class FlowTrainer():
             self.logger.set_name(exp_name)
         cnt = Counter()
         best_epoch_loss = np.inf
+        val_latents = val_latents.detach().cpu().numpy()
         for epoch in range(n_epochs):
             self.model.train()
             running_loss = []
@@ -69,10 +70,10 @@ class FlowTrainer():
                                               name=f'Epoch {epoch} flow vs gaussian inference',
                                               step=epoch)
                 if epoch % 5 == 0:
-                    print('Calculating FID')
+                    print(f'Calculating FID on epoch {epoch}')
                     size = len(val_latents)
-                    fake_lats = self.model.sample(size)
-                    fid = ValLoss.calc_fid(val_latents.detach().cpu().numpy(), fake_lats.detach().cpu().numpy())
+                    fake_lats = self.model.sample(size).detach().cpu().numpy()
+                    fid = ValLoss.calc_fid(val_latents, fake_lats)
                     self.logger.log_metric(f'FID on latents', fid, epoch=epoch, step=epoch)
                         
             if epoch_loss < best_epoch_loss:
