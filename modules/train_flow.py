@@ -72,7 +72,7 @@ class FlowTrainer():
                     print('Calculating FID')
                     size = len(val_latents)
                     fake_lats = self.model.sample(size)
-                    fid = ValLoss.calc_fid(val_latents, fake_lats)
+                    fid = ValLoss.calc_fid(val_latents.detach().cpu().numpy(), fake_lats.detach().cpu().numpy())
                     self.logger.log_metric(f'FID on latents', fid, epoch=epoch, step=epoch)
                         
             if epoch_loss < best_epoch_loss:
