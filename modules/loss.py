@@ -60,7 +60,7 @@ class LapLoss(nn.Module):
 
 class ValLoss(nn.Module):
     """
-    Calculates FID and IS
+    Calculates FID and IS for generator model
     """
     def __init__(self):
         super(ValLoss, self).__init__()
@@ -75,6 +75,8 @@ class ValLoss(nn.Module):
         # Preprocess data
         x = F.interpolate(x, size=(299, 299), mode='bilinear')
         x = (x - 0.5) * 2
+        if x.shape[1] == 1:
+            x = torch.stack([x, x, x], dim=1).squeeze(2)
 
         # N x 3 x 299 x 299
         x = self.inception_v3.Conv2d_1a_3x3(x)
@@ -154,7 +156,6 @@ class ValLoss(nn.Module):
 
     @staticmethod
     def calc_fid(real_features, fake_features):
-        # TODO (2 points)
         mu_r = np.mean(real_features, axis=1)
         mu_f = np.mean(fake_features, axis=1)
         cov_r = np.cov(real_features, rowvar=True)
@@ -167,7 +168,6 @@ class ValLoss(nn.Module):
 
     @staticmethod
     def calc_is(fake_probs):
-        # TODO (2 points)
         marginal_distr = np.mean(fake_probs, axis=0)[None]
         kl_divergence = fake_probs * (np.log(fake_probs) - np.log(marginal_distr))
         kl_sum = np.sum(kl_divergence, axis=1)

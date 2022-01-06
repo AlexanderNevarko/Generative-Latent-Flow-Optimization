@@ -9,6 +9,7 @@ import numpy as np
 
 from .utils import standard_normal_logprob
 from .visualization import visualize_image_grid, img_side_by_side
+from .loss import ValLoss
 
 
 from tqdm.notebook import tqdm
@@ -26,7 +27,7 @@ class FlowTrainer():
     
     def train(self, n_epochs,
               train_loader, 
-            #   criterion, 
+              val_latents,
               optimizer, 
               scheduler=None,
               exp_name='',
@@ -35,13 +36,13 @@ class FlowTrainer():
             self.logger.set_name(exp_name)
         cnt = Counter()
         best_epoch_loss = np.inf
+        val_latents = val_latents.detach().cpu().numpy()
         for epoch in range(n_epochs):
             self.model.train()
             running_loss = []
             pbar = tqdm(train_loader, leave=True)
             for latents in pbar:
                 latents = latents.float().to(self.device)
-                bs, lat_dim = latents.shape
                 optimizer.zero_grad()
                 loss = -self.model.log_prob(inputs=latents).mean()
                 loss.backward()
@@ -68,6 +69,13 @@ class FlowTrainer():
                         self.logger.log_image(img_side_by_side(flow_img, basic_img), 
                                               name=f'Epoch {epoch} flow vs gaussian inference',
                                               step=epoch)
+                if epoch % 5 == 0:
+                    print(f'Calculating FID on epoch {epoch}')
+                    size = len(val_latents)
+                    fake_lats = self.model.sample(size).detach().cpu().numpy()
+                    fid = ValLoss.calc_fid(val_latents, fake_lats)
+                    self.logger.log_metric(f'FID on latents', fid, epoch=epoch, step=epoch)
+                        
             if epoch_loss < best_epoch_loss:
                 best_epoch_loss = epoch_loss
                 torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
