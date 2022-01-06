@@ -16,7 +16,7 @@ class AdaptiveBatchNorm(nn.BatchNorm2d):
 
     The base layer (BatchNorm2d) is applied to "inputs" with affine = False
 
-    After that, the "noise" are linearly mapped to "gamma" and "bias"
+    After that, the "latents" are linearly mapped to "gamma" and "bias"
     
     These "gamma" and "bias" are applied to the outputs like in batch normalization
     with affine = True (see definition of batch normalization for reference)
@@ -29,13 +29,13 @@ class AdaptiveBatchNorm(nn.BatchNorm2d):
         self.f_gamma = nn.Linear(embed_features, num_features)
         self.f_bias = nn.Linear(embed_features, num_features)
 
-    def forward(self, inputs, noise):
+    def forward(self, inputs, latents):
         """
-        noise: [B x embed_features]
+        latents: [B x embed_features]
         inputs: [B x C x H x W]
         """
-        gamma = self.f_gamma(noise)
-        bias = self.f_bias(noise)
+        gamma = self.f_gamma(latents)
+        bias = self.f_bias(latents)
 
         assert gamma.shape[0] == inputs.shape[0] and gamma.shape[1] == inputs.shape[1]
         assert bias.shape[0] == inputs.shape[0] and bias.shape[1] == inputs.shape[1]
@@ -70,7 +70,7 @@ class PreActResBlock(nn.Module):
     def __init__(self,
                  in_channels: int,
                  out_channels: int,
-                 noise_channels: int = None,
+                 latent_channels: int = None,
                  lrelu_slope: float = 0.2,
                  norm: str = 'ada',
                  upsample: bool = False,
@@ -78,7 +78,7 @@ class PreActResBlock(nn.Module):
         super(PreActResBlock, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.noise_channels = noise_channels
+        self.latent_channels = latent_channels
         self.norm = norm
         self.downsample = downsample
         self.upsample = upsample
@@ -90,8 +90,8 @@ class PreActResBlock(nn.Module):
             self.ups = nn.Upsample(scale_factor=2, mode='bilinear')
         
         if norm == 'ada':
-            self.n1 = AdaptiveBatchNorm(in_channels, noise_channels)
-            self.n2 = AdaptiveBatchNorm(out_channels, noise_channels)
+            self.n1 = AdaptiveBatchNorm(in_channels, latent_channels)
+            self.n2 = AdaptiveBatchNorm(out_channels, latent_channels)
         elif norm == 'in':
             self.n1 = nn.InstanceNorm2d(in_channels)
             self.n2 = nn.InstanceNorm2d(out_channels)
@@ -111,14 +111,14 @@ class PreActResBlock(nn.Module):
 
     def forward(self, 
                 inputs, # regular features 
-                noise=None): # noise used in adaptive batch norm
+                latents=None): # latents used in adaptive batch norm
         if self.upsample:
             inputs = self.ups(inputs)
         
         identity = inputs
         out = inputs
         if self.norm == 'ada':
-            out = self.n1(out, noise)
+            out = self.n1(out, latents)
         elif self.norm in ['in', 'bn', 'gn']:
             out = self.n1(out)
         
@@ -126,7 +126,7 @@ class PreActResBlock(nn.Module):
         out = self.conv1(out)
         
         if self.norm == 'ada':
-            out = self.n2(out, noise)
+            out = self.n2(out, latents)
         elif self.norm in ['in', 'bn', 'gn']:
             out = self.n2(out)
         out = self.act.forward(out)

@@ -53,7 +53,7 @@ class GLOGenerator(nn.Module):
     def __init__(self, 
                  min_channels: int, 
                  max_channels: int,
-                 noise_channels: int,
+                 latent_channels: int,
                  num_blocks: int,
                  dataloader,
                  normalization: str = '',
@@ -69,7 +69,7 @@ class GLOGenerator(nn.Module):
         if max_channels != min_channels * 2**num_blocks:
             raise ValueError(f'Wrong channels num: {max_channels}, {min_channels}')
         
-        self.embed_features = noise_channels
+        self.embed_features = latent_channels
         self.num_blocks = num_blocks
         self.min_channels = min_channels
         self.max_channels = max_channels
@@ -77,17 +77,17 @@ class GLOGenerator(nn.Module):
         
         self.act = nn.ReLU(inplace=False)
         
-        self.linear = spectral_norm(nn.Linear(noise_channels, 4*4*max_channels))
+        self.const = nn.Parameter(torch.randn([max_channels, 4, 4]))
         
         self.res_blocks = nn.ModuleList()
         for i in range(num_blocks):
             self.res_blocks.append(PreActResBlock(max_channels//2**i, max_channels//2**(i+1), 
-                                                  noise_channels, upsample=True, 
+                                                  latent_channels, upsample=True, 
                                                   lrelu_slope=lrelu_slope, norm=normalization))
         if normalization == 'in':
             self.last_norm = nn.InstanceNorm2d(min_channels)
         elif normalization == 'ada':
-            self.last_norm = AdaptiveBatchNorm(min_channels, noise_channels)
+            self.last_norm = AdaptiveBatchNorm(min_channels, latent_channels)
         elif normalization == 'gn':
             self.last_norm = nn.GroupNorm(num_groups=8, num_channels=min_channels)
         else:
@@ -97,16 +97,15 @@ class GLOGenerator(nn.Module):
         #                                      nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, padding=1))
         self.sigmoid = nn.Sigmoid()
         
-    def forward(self, noise):
-        bs = noise.shape[0]
-        out = self.linear(noise)
-        out = out.reshape((bs, self.max_channels, 4, 4))
+    def forward(self, latents):
+        bs = latents.shape[0]
+        out = self.const.unsqueeze(0).repeat([bs, 1, 1, 1])
         
         for i in range(self.num_blocks):
             # Scince we have pre-act blocks, we don't need activations inbetween
-            out = self.res_blocks[i](out, noise)
+            out = self.res_blocks[i](out, latents)
         if self.normalization == 'ada':
-            out = self.last_norm(out, noise)
+            out = self.last_norm(out, latents)
         else:
             out = self.last_norm(out)
         out = self.act(out)
@@ -116,7 +115,7 @@ class GLOGenerator(nn.Module):
         
         out = self.sigmoid(out)
 
-        assert out.shape == (noise.shape[0], self.out_channels, *self.output_size)
+        assert out.shape == (latents.shape[0], self.out_channels, *self.output_size)
         return out
 
     # def optimize_to_img(self, img, loss_func, min_loss, optimizer, init_z=None):
