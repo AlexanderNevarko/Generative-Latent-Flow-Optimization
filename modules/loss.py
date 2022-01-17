@@ -100,13 +100,14 @@ class ValLoss(nn.Module):
     def _classifier(self, x: torch.Tensor) -> torch.Tensor:
         return F.softmax(self.model.to_logits(x), dim=1)
 
-    def calc_data(self, dataloader):
+    def calc_data(self, generator, dataloader):
         real_features = []
         fake_features = []
         fake_probs = []
+        gen_device = next(iter(generator.parameters())).device
         for idx, real_img, _ in tqdm(dataloader, leave=False):
-            idx, real_img = idx.long().to(self.device), real_img.to(self.device)
-            fake_img = self.model(idx=idx)
+            idx, real_img = idx.long().to(gen_device), real_img.to(self.device)
+            fake_img = self.model(idx=idx).to(self.device)
             
             real_features_batch = self._features(real_img)
             real_features.append(real_features_batch.detach().cpu().numpy())   
@@ -143,8 +144,8 @@ class ValLoss(nn.Module):
         return score
         
 
-    def forward(self, dataloader: DataLoader) -> torch.Tensor:
-        real_features, fake_features, fake_probs = self.calc_data(dataloader)
+    def forward(self, generator, dataloader: DataLoader) -> torch.Tensor:
+        real_features, fake_features, fake_probs = self.calc_data(generator, dataloader)
 
         fid = self.calc_fid(real_features, fake_features)
 
