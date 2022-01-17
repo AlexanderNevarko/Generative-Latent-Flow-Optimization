@@ -5,14 +5,22 @@ from torchvision import models
 import numpy as np
 from scipy import linalg
 
+from torch.utils.data import DataLoader
+from tqdm.notebook import tqdm
+
 
 def gauss_kernel(size=5, device=torch.device('cpu'), channels=3):
-    kernel = torch.tensor([[1., 4., 6., 4., 1],
-                           [4., 16., 24., 16., 4.],
-                           [6., 24., 36., 24., 6.],
-                           [4., 16., 24., 16., 4.],
-                           [1., 4., 6., 4., 1.]])
-    kernel /= 256.
+    if size == 3:
+        kernel = torch.tensor([[1., 2., 1.],
+                               [2., 4., 2.],
+                               [1., 2., 1.]]) / 16
+    elif size == 5:
+        kernel = torch.tensor([[1., 4., 7., 4., 1],
+                               [4., 16., 26., 16., 4.],
+                               [7., 26., 41., 26., 7.],
+                               [4., 16., 26., 16., 4.],
+                               [1., 4., 7., 4., 1.]]) / 273
+    # kernel /= 256.
     kernel = kernel.repeat(channels, 1, 1, 1)
     kernel = kernel.to(device)
     return kernel
@@ -30,7 +38,11 @@ def upsample(x):
     return conv_gauss(x_up, 4*gauss_kernel(channels=x.shape[1], device=x.device))
 
 def conv_gauss(img, kernel):
-    img = torch.nn.functional.pad(img, (2, 2, 2, 2), mode='reflect')
+    size = kernel.shape[-1]
+    if size == 3:
+        img = torch.nn.functional.pad(img, (1, 1, 1, 1), mode='reflect')
+    elif size == 5:
+        img = torch.nn.functional.pad(img, (2, 2, 2, 2), mode='reflect')
     out = torch.nn.functional.conv2d(img, kernel, groups=img.shape[1])
     return out
 
@@ -47,15 +59,28 @@ def laplacian_pyramid(img, kernel, max_levels=3):
     return pyr
 
 class LapLoss(nn.Module):
-    def __init__(self, max_levels=3, channels=3, device=torch.device('cpu')):
+    def __init__(self, max_levels=3, channels=3, size=5, device=torch.device('cpu')):
         super(LapLoss, self).__init__()
         self.max_levels = max_levels
-        self.gauss_kernel = gauss_kernel(channels=channels, device=device)
+        self.gauss_kernel = gauss_kernel(size=size, channels=channels, device=device)
         
     def forward(self, input, target):
         pyr_input  = laplacian_pyramid(img=input, kernel=self.gauss_kernel, max_levels=self.max_levels)
         pyr_target = laplacian_pyramid(img=target, kernel=self.gauss_kernel, max_levels=self.max_levels)
         return sum(F.l1_loss(a, b) for a, b in zip(pyr_input, pyr_target))
+
+class Lap35Loss(nn.Module):
+    def __init__(self, max_levels=3, channels=3, device=torch.device('cpu'), alpha=0.5):
+        super(Lap35Loss, self).__init__()
+        self.lap3 = LapLoss(max_levels, channels, 3, device)
+        self.lap5 = LapLoss(max_levels, channels, 5, device)
+        self.alpha = alpha
+    
+    def forward(self, input, target):
+        lap3 = self.lap3(input, target)
+        lap5 = self.lap5(input, target)
+        return self.alpha*lap3 + (1-self.alpha)*lap5
+
 
 
 class ValLoss(nn.Module):
@@ -65,6 +90,7 @@ class ValLoss(nn.Module):
     def __init__(self, model):
         super(ValLoss, self).__init__()
         self.model = model
+        self.device = next(iter(model.parameters())).device
 
     @torch.no_grad()
     def _features(self, x: torch.Tensor) -> torch.Tensor:
@@ -72,25 +98,25 @@ class ValLoss(nn.Module):
 
     @torch.no_grad()
     def _classifier(self, x: torch.Tensor) -> torch.Tensor:
-        return F.softmax(self.model(x), dim=1)
+        return F.softmax(self.model.to_logits(x), dim=1)
 
-    def calc_data(self, real_inputs: list, fake_inputs: list):
+    def calc_data(self, dataloader):
         real_features = []
-        for real_inputs_batch in real_inputs:
-            real_features_batch = self._features(real_inputs_batch)
-            real_features.append(real_features_batch.detach().cpu().numpy())            
-        real_features = np.concatenate(real_features)
-
         fake_features = []
         fake_probs = []
-
-        for fake_inputs_batch in fake_inputs:
-            fake_features_batch = self._features(fake_inputs_batch)
+        for idx, real_img, _ in tqdm(dataloader, leave=False):
+            idx, real_img = idx.long().to(self.device), real_img.to(self.device)
+            fake_img = self.model(idx=idx)
+            
+            real_features_batch = self._features(real_img)
+            real_features.append(real_features_batch.detach().cpu().numpy())   
+            
+            fake_features_batch = self._features(fake_img)
             fake_probs_batch = self._classifier(fake_features_batch)
-
             fake_features.append(fake_features_batch.detach().cpu().numpy())
             fake_probs.append(fake_probs_batch.detach().cpu().numpy())
-
+            
+        real_features = np.concatenate(real_features)
         fake_features = np.concatenate(fake_features)
         fake_probs = np.concatenate(fake_probs)
 
@@ -117,8 +143,8 @@ class ValLoss(nn.Module):
         return score
         
 
-    def forward(self, real_images: list, fake_images: list) -> torch.Tensor:
-        real_features, fake_features, fake_probs = self.calc_data(real_images, fake_images)
+    def forward(self, dataloader: DataLoader) -> torch.Tensor:
+        real_features, fake_features, fake_probs = self.calc_data(dataloader)
 
         fid = self.calc_fid(real_features, fake_features)
 

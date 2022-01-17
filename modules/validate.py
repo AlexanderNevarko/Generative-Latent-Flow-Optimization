@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
-from torchvision.utils import make_grid
+from torchvision.utils import make_grid, save_image
 import numpy as np
 
 
@@ -45,7 +45,7 @@ class Validator():
             
         return z, np.mean(running_loss)
 
-    def visualize_val_results(self, z, img):
+    def visualize_val_results(self, z, img, save_file=None):
         '''
         z: latent vectors to generate on
         img: ground truth image tensors
@@ -60,6 +60,8 @@ class Validator():
         pairs[1] = img_grid
         
         grid = make_grid(pairs, nrow=2)
+        if save_file is not None:
+            save_image(grid, save_file)
         transform = transforms.ToPILImage()
         return transform(grid)
              

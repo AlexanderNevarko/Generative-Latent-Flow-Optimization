@@ -146,7 +146,7 @@ class GLOGenerator(nn.Module):
         
 
 class GLOModel(nn.Module):
-    def __init__(self, generator, dataloader, sample_generator, sparse):
+    def __init__(self, generator, sample_generator, sparse):
         super(GLOModel, self).__init__()
         self.generator = generator
         self.sample_generator = sample_generator

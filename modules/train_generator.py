@@ -2,8 +2,6 @@ import os
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torchvision.utils import make_grid
-from torchvision import transforms
 import numpy as np
 from .visualization import visualize_image_grid, visualize_paired_results
 from .loss import ValLoss
@@ -20,15 +18,15 @@ class GLOTrainer():
         self.model = model
         self.logger = logger
         self.device = next(iter(self.model.parameters())).device
-        self.val_loss = ValLoss().to(self.device)
     
     def train(self, n_epochs,
               train_loader,
-              val_loader,
               loss_func,
               generator_optimizer,
               z_optimizer,
               exp_name,
+              fid_loader=None,
+              fid_loss=None,
               model_path='',
               generator_scheduler=None,
               z_scheduler=None):
@@ -41,7 +39,7 @@ class GLOTrainer():
             running_loss = []
             z_grad = torch.zeros_like(self.model.z.weight).to(self.device)
             self.model.train()
-            for i, (idx, img, target) in enumerate(tqdm(train_loader, leave=False)):
+            for i, (idx, img, _) in enumerate(tqdm(train_loader, leave=False)):
                 idx, img = idx.long().to(self.device), img.float().to(self.device)
                 
                 generator_optimizer.zero_grad()
@@ -86,21 +84,8 @@ class GLOTrainer():
                 
                 if epoch % 5 == 0:
                     print(f'Calculating FID and IS on epoch {epoch}')
-                    real_ft, fake_ft, fake_pr = [], [], []
-                    for idx, img, _ in tqdm(val_loader, leave=False):
-                        idx, img = idx.to(self.device), img.to(self.device)
-                        gen_img = self.model(idx=idx)
-                        real_features, fake_features, fake_probs = self.val_loss.calc_data([img], [gen_img])
-                        real_ft.append(real_features)
-                        fake_ft.append(fake_features)
-                        fake_pr.append(fake_probs)
+                    fid, inception_score = fid_loss(fid_loader)
                         
-                        
-                    real_ft = np.concatenate(real_ft)
-                    fake_ft = np.concatenate(fake_ft)
-                    fake_pr = np.concatenate(fake_pr)
-                    fid = ValLoss.calc_fid(real_ft, fake_ft)
-                    inception_score = ValLoss.calc_is(fake_pr)
                     self.logger.log_metric(f'FID on train', fid, epoch=epoch, step=epoch)
                     self.logger.log_metric(f'IS on train', inception_score, epoch=epoch, step=epoch)
                 
