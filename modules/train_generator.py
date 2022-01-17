@@ -84,7 +84,7 @@ class GLOTrainer():
                 
                 if epoch % 5 == 0:
                     print(f'Calculating FID and IS on epoch {epoch}')
-                    fid, inception_score = fid_loss(fid_loader)
+                    fid, inception_score = fid_loss(self.model, fid_loader)
                         
                     self.logger.log_metric(f'FID on train', fid, epoch=epoch, step=epoch)
                     self.logger.log_metric(f'IS on train', inception_score, epoch=epoch, step=epoch)
