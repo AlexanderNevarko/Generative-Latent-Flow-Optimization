@@ -107,7 +107,7 @@ class ValLoss(nn.Module):
         gen_device = next(iter(generator.parameters())).device
         for idx, real_img, _ in tqdm(dataloader, leave=False):
             idx, real_img = idx.long().to(gen_device), real_img.to(self.device)
-            fake_img = self.model(idx=idx).to(self.device)
+            fake_img = generator(idx=idx).to(self.device)
             
             real_features_batch = self._features(real_img)
             real_features.append(real_features_batch.detach().cpu().numpy())   
