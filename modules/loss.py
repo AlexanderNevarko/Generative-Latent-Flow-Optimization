@@ -87,18 +87,75 @@ class ValLoss(nn.Module):
     """
     Calculates FID and IS for generator model
     """
-    def __init__(self, model):
+    def __init__(self, device):
         super(ValLoss, self).__init__()
-        self.model = model
-        self.device = next(iter(model.parameters())).device
+        self.inception_v3 = models.inception_v3(pretrained=True)
+        self.inception_v3.eval()
+        self.device = device
+        for p in self.inception_v3.parameters():
+            p.requires_grad = False
+        self.inception_v3.to(device)
 
     @torch.no_grad()
     def _features(self, x: torch.Tensor) -> torch.Tensor:
-        return self.model.features(x)
+        # Preprocess data
+        x = F.interpolate(x, size=(299, 299), mode='bilinear')
+        x = (x - 0.5) * 2
+
+        # N x 3 x 299 x 299
+        x = self.inception_v3.Conv2d_1a_3x3(x)
+        # N x 32 x 149 x 149
+        x = self.inception_v3.Conv2d_2a_3x3(x)
+        # N x 32 x 147 x 147
+        x = self.inception_v3.Conv2d_2b_3x3(x)
+        # N x 64 x 147 x 147
+        x = self.inception_v3.maxpool1(x)
+        # N x 64 x 73 x 73
+        x = self.inception_v3.Conv2d_3b_1x1(x)
+        # N x 80 x 73 x 73
+        x = self.inception_v3.Conv2d_4a_3x3(x)
+        # N x 192 x 71 x 71
+        x = self.inception_v3.maxpool2(x)
+        # N x 192 x 35 x 35
+        x = self.inception_v3.Mixed_5b(x)
+        # N x 256 x 35 x 35
+        x = self.inception_v3.Mixed_5c(x)
+        # N x 288 x 35 x 35
+        x = self.inception_v3.Mixed_5d(x)
+        # N x 288 x 35 x 35
+        x = self.inception_v3.Mixed_6a(x)
+        # N x 768 x 17 x 17
+        x = self.inception_v3.Mixed_6b(x)
+        # N x 768 x 17 x 17
+        x = self.inception_v3.Mixed_6c(x)
+        # N x 768 x 17 x 17
+        x = self.inception_v3.Mixed_6d(x)
+        # N x 768 x 17 x 17
+        x = self.inception_v3.Mixed_6e(x)
+        # N x 768 x 17 x 17
+        x = self.inception_v3.Mixed_7a(x)
+        # N x 1280 x 8 x 8
+        x = self.inception_v3.Mixed_7b(x)
+        # N x 2048 x 8 x 8
+        x = self.inception_v3.Mixed_7c(x)
+        # Adaptive average pooling
+        x = self.inception_v3.avgpool(x)
+        # N x 2048 x 1 x 1
+        x = self.inception_v3.dropout(x)
+        # N x 2048 x 1 x 1
+        x = torch.flatten(x, 1)
+
+        return x
+
 
     @torch.no_grad()
     def _classifier(self, x: torch.Tensor) -> torch.Tensor:
-        return F.softmax(self.model.to_logits(x), dim=1)
+        # N x 2048
+        x = self.inception_v3.fc(x)
+        # N x 1000 (num_classes)
+        x = F.softmax(x, dim=1)
+
+        return x
 
     def calc_data(self, generator, dataloader):
         real_features = []
