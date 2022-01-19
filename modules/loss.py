@@ -125,10 +125,10 @@ class ValLoss(nn.Module):
 
     @staticmethod
     def calc_fid(real_features, fake_features):
-        mu_r = np.mean(real_features, axis=1)
-        mu_f = np.mean(fake_features, axis=1)
-        cov_r = np.cov(real_features, rowvar=True)
-        cov_f = np.cov(fake_features, rowvar=True)
+        mu_r = np.mean(real_features, axis=0)
+        mu_f = np.mean(fake_features, axis=0)
+        cov_r = np.cov(real_features, rowvar=False)
+        cov_f = np.cov(fake_features, rowvar=False)
         cov_mean = linalg.sqrtm(cov_r @ cov_f)
         if np.iscomplexobj(cov_mean):
             cov_mean = cov_mean.real
@@ -136,9 +136,9 @@ class ValLoss(nn.Module):
         return sum_mu + np.trace(cov_r + cov_f - 2*cov_mean)
 
     @staticmethod
-    def calc_is(fake_probs):
+    def calc_is(fake_probs, eps=1e-10):
         marginal_distr = np.mean(fake_probs, axis=0)[None]
-        kl_divergence = fake_probs * (np.log(fake_probs) - np.log(marginal_distr))
+        kl_divergence = fake_probs * (np.log(fake_probs+eps) - np.log(marginal_distr+eps))
         kl_sum = np.sum(kl_divergence, axis=1)
         score = np.exp(kl_sum.mean())
         return score

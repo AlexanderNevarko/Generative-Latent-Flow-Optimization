@@ -6,7 +6,7 @@ from torchvision.utils import make_grid, save_image
 import numpy as np
 
 
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 from .glo_generator import SampleGenerator
 
