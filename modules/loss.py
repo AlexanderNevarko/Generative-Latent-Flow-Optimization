@@ -191,8 +191,8 @@ class ValLoss(nn.Module):
     def calc_fid(real_features, fake_features):
         mu_r = np.mean(real_features, axis=0)
         mu_f = np.mean(fake_features, axis=0)
-        cov_r = np.cov(real_features, rowvar=False)
-        cov_f = np.cov(fake_features, rowvar=False)
+        cov_r = np.nan_to_num(np.cov(real_features, rowvar=False), posinf=1, neginf=-1)
+        cov_f = np.nan_to_num(np.cov(fake_features, rowvar=False), posinf=1, neginf=-1)
         cov_mean = linalg.sqrtm(cov_r @ cov_f)
         if np.iscomplexobj(cov_mean):
             cov_mean = cov_mean.real
