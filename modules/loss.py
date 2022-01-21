@@ -168,7 +168,7 @@ class ValLoss(nn.Module):
                 idx = idx.long().to(gen_device)
                 fake_img = generator(idx=idx).to(self.device)
             else:
-                inputs = inputs_generator(bs).to(gen_device)
+                inputs = torch.nan_to_num(inputs_generator(bs), posinf=1, neginf=-1).to(gen_device)
                 fake_img = generator(inputs=inputs).to(self.device)
             
             real_img = real_img.to(self.device)
