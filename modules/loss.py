@@ -157,14 +157,21 @@ class ValLoss(nn.Module):
 
         return x
 
-    def calc_data(self, generator, dataloader):
+    def calc_data(self, generator, dataloader, inputs_generator):
         real_features = []
         fake_features = []
         fake_probs = []
         gen_device = next(iter(generator.parameters())).device
         for idx, real_img, _ in tqdm(dataloader, leave=False):
-            idx, real_img = idx.long().to(gen_device), real_img.to(self.device)
-            fake_img = generator(idx=idx).to(self.device)
+            bs = real_img.shape[0]
+            if inputs_generator is None:
+                idx = idx.long().to(gen_device)
+                fake_img = generator(idx=idx).to(self.device)
+            else:
+                inputs = inputs_generator(bs).to(gen_device)
+                fake_img = generator(inputs=inputs).to(self.device)
+            
+            real_img = real_img.to(self.device)
             
             real_features_batch = self._features(real_img)
             real_features.append(real_features_batch.detach().cpu().numpy())   
@@ -201,8 +208,8 @@ class ValLoss(nn.Module):
         return score
         
 
-    def forward(self, generator, dataloader: DataLoader) -> torch.Tensor:
-        real_features, fake_features, fake_probs = self.calc_data(generator, dataloader)
+    def forward(self, generator, dataloader: DataLoader, inputs_generator=None) -> torch.Tensor:
+        real_features, fake_features, fake_probs = self.calc_data(generator, dataloader, inputs_generator)
 
         fid = self.calc_fid(real_features, fake_features)
 
