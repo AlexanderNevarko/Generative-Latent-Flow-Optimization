@@ -101,6 +101,9 @@ class ValLoss(nn.Module):
         # Preprocess data
         x = F.interpolate(x, size=(299, 299), mode='bilinear')
         x = (x - 0.5) * 2
+        if x.shape[1] == 1:
+            x = torch.stack([x, x, x], dim=1).squeeze(2)
+
 
         # N x 3 x 299 x 299
         x = self.inception_v3.Conv2d_1a_3x3(x)
