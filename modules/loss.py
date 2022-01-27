@@ -172,6 +172,8 @@ class ValLoss(nn.Module):
                 fake_img = generator(idx=idx).to(self.device)
             else:
                 inputs = torch.nan_to_num(inputs_generator(bs), posinf=1, neginf=-1).to(gen_device)
+                if torch.any(torch.isnan(inputs)):
+                    print(f'NaN samples occured: {inputs}')
                 fake_img = generator(inputs=inputs).to(self.device)
             
             real_img = real_img.to(self.device)
@@ -188,14 +190,16 @@ class ValLoss(nn.Module):
         fake_features = np.concatenate(fake_features)
         fake_probs = np.concatenate(fake_probs)
 
-        return real_features, fake_features, fake_probs
+        return (real_features, 
+                np.nan_to_num(fake_features, posinf=1, neginf=-1), 
+                np.nan_to_num(fake_probs, posinf=0.5, neginf=-0.5))
 
     @staticmethod
     def calc_fid(real_features, fake_features):
         mu_r = np.mean(real_features, axis=0)
         mu_f = np.mean(fake_features, axis=0)
-        cov_r = np.nan_to_num(np.cov(real_features, rowvar=False), posinf=1, neginf=-1)
-        cov_f = np.nan_to_num(np.cov(fake_features, rowvar=False), posinf=1, neginf=-1)
+        cov_r = np.cov(real_features, rowvar=False)
+        cov_f = np.cov(fake_features, rowvar=False)
         cov_mean = linalg.sqrtm(cov_r @ cov_f)
         if np.iscomplexobj(cov_mean):
             cov_mean = cov_mean.real
@@ -213,7 +217,7 @@ class ValLoss(nn.Module):
 
     def forward(self, generator, dataloader: DataLoader, inputs_generator=None) -> torch.Tensor:
         real_features, fake_features, fake_probs = self.calc_data(generator, dataloader, inputs_generator)
-
+        
         fid = self.calc_fid(real_features, fake_features)
 
         inception_score = self.calc_is(fake_probs)
