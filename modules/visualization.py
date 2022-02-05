@@ -61,5 +61,27 @@ def img_side_by_side(img1, img2, inv_transform=None, save_file=None):
         save_image(grid, save_file)
     return inv_transform(grid)
     
+def img_raw_by_raw(*imgs, inv_transform=None, save_file=None):
+    '''
+    Visualize two pairs of image tensor sets
+    imgs: tensors array with shapes B x C x H x W
+    inv_transform: inverse transform for tensor -> image transformation
+        default: torchvision.transforms.ToPILImage() 
+    save_file: str, file name to save images. If None, don't save images.
+        default: None
+    '''
+    if inv_transform is None:
+        inv_transform = transforms.ToPILImage()
+    grids = []
+    for img in imgs:
+        img = img.detach().cpu()
+        grid = (make_grid(img, nrow=len(img), padding=1))
+        grids.append(grid)
     
-
+    tuples = torch.empty(len(imgs), *grids[0].shape, dtype=torch.float32)
+    for i in range(len(tuples)):
+        tuples[i] = grids[i]
+    grid = make_grid(tuples, nrow=1, padding=1)
+    if save_file is not None:
+        save_image(grid, save_file)
+    return inv_transform(grid)
