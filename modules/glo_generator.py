@@ -146,12 +146,12 @@ class GLOGenerator(nn.Module):
         
 
 class GLOModel(nn.Module):
-    def __init__(self, generator, sample_generator, sparse):
+    def __init__(self, generator, sample_generator, sparse, lat_regularization=None):
         super(GLOModel, self).__init__()
         self.generator = generator
         self.sample_generator = sample_generator
         self.z = nn.Embedding.from_pretrained(self.sample_generator.get_z_dataset(),
-                                              sparse=sparse, freeze=False)
+                                              sparse=sparse, freeze=False, max_norm=lat_regularization)
         self.z.requires_grad = True
     
     def forward(self, idx=None, inputs=None):
