@@ -3,8 +3,16 @@ lat_dim: 128
 bw_method: 0.1
 device: cpu
 model_path: models/cifar_test
+exp_name: cluster_test
 alpha: 0.5
 clipping_value: 0.0001
+
+experiment:
+    api_key: CfFmqDpTCtsdDkLooedZh7bs2
+    project_name: joint-cifar
+    workspace: alexandernevarko
+    auto_metric_logging: False
+
 
 data: 
     type: cifar10

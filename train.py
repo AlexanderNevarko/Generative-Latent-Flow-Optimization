@@ -1,3 +1,4 @@
+from comet_ml import Experiment
 import yaml
 import os
 import sys
@@ -22,6 +23,11 @@ from modules.train_joint import train_joint
 
 import warnings
 warnings.filterwarnings("ignore")
+
+def get_experiment(cfg_exp):
+    if cfg_exp is None:
+        return None
+    return Experiment(**cfg_exp)
 
 def get_dataset(cfg_data):
     if cfg_data['type'] == 'mnist':
@@ -110,6 +116,7 @@ def main():
     n_components = cfg['lat_dim']
     bw_method = cfg['bw_method']
     kwargs = {'cfg': cfg}
+    kwargs['experiment'] = get_experiment(cfg.get('experiment', None))
     kwargs['train_loader'], sampler_loader = get_dataset(cfg['data'])
     sampler = SampleGenerator(sampler_loader, z_dim=n_components, bw_method=bw_method)
     generator = GLOGenerator(dataloader=kwargs['train_loader'], latent_channels=n_components, **cfg['generator']).to(device)

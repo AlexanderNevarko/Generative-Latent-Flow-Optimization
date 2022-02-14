@@ -17,7 +17,8 @@ def train_joint(model, flow, train_loader,
                 g_optimizer, z_optimizer, 
                 flow_optimizer, g_scheduler, 
                 z_scheduler, flow_scheduler, 
-                criterion, val_loss, cfg):
+                criterion, val_loss, 
+                experiment, cfg):
     model_path = cfg['model_path']
     device = cfg['device']
     n_components = cfg['lat_dim']
@@ -26,8 +27,7 @@ def train_joint(model, flow, train_loader,
     
     clipping_value = cfg.get('clipping_value', 1e-4) # for flow gradient clipping
     img_num = cfg.get('img_num', 16) # number of images to log
-    experiment = cfg.get('experiment', None)
-    exp_name = cfg.get('exp_name', None)
+    exp_name = cfg.get('exp_name', 'default')
     
     if experiment is not None:
         experiment.set_name(exp_name)
