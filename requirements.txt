@@ -5,4 +5,5 @@ scikit-learn
 torchvision
 torchdiffeq
 matplotlib
-nflows
+pyyaml
+git+https://github.com/VLL-HD/FrEIA.git
