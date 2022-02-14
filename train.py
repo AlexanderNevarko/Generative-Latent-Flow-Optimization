@@ -65,11 +65,11 @@ def get_scheduler(opt, cfg_opt):
                                    format(cfg_opt['lr_policy']['type']))
     return scheduler
 
-def get_loss(cfg_loss):
+def get_loss(cfg_loss, device):
     if cfg_loss['type'] == 'LapLoss':
-        return LapLoss(**cfg_loss['params'])
+        return LapLoss(**cfg_loss['params'], device=device)
     if cfg_loss['type'] == 'Lap35Loss':
-        return Lap35Loss(**cfg_loss['params'])
+        return Lap35Loss(**cfg_loss['params'], device=device)
     else:
         print(f'Unknown loss type in config: {cfg_loss["type"]}')
 
@@ -122,7 +122,7 @@ def main():
     kwargs['g_scheduler'] = get_scheduler(kwargs['g_optimizer'], cfg['g_optimizer'])
     kwargs['z_scheduler'] = get_scheduler(kwargs['z_optimizer'], cfg['z_optimizer'])
     kwargs['flow_scheduler'] = get_scheduler(kwargs['flow_optimizer'], cfg['flow_optimizer'])
-    kwargs['criterion'] = get_loss(cfg['loss'])
+    kwargs['criterion'] = get_loss(cfg['loss'], device)
     kwargs['val_loss'] = ValLoss(device)
     
     train_joint(**kwargs)
