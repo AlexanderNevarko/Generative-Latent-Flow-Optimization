@@ -6,7 +6,7 @@ import numpy as np
 from scipy import linalg
 
 from torch.utils.data import DataLoader
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 
 def gauss_kernel(size=5, device=torch.device('cpu'), channels=3):
