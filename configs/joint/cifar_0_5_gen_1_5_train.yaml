@@ -17,7 +17,7 @@ experiment:
 data: 
     type: cifar10
     root: datasets/CIFAR10
-    batch_size: 32
+    batch_size: 128
     num_workers: 1
 
 generator:
