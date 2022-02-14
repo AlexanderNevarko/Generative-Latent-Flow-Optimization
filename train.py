@@ -105,7 +105,7 @@ def main():
     args = parser.parse_args()
     cfg_file = args.cfg
     with open(cfg_file, 'r') as file:
-        cfg = yaml.load(file)
+        cfg = yaml.safe_load(file)
     device = torch.device(cfg['device'])
     n_components = cfg['lat_dim']
     bw_method = cfg['bw_method']
