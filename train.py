@@ -29,18 +29,16 @@ def get_experiment(cfg_exp):
         return None
     return Experiment(**cfg_exp)
 
-def get_dataset(cfg_data):
+def get_dataset(cfg_data, shuffle):
     if cfg_data['type'] == 'mnist':
-        dataset = IdxDataset(MNIST(root=cfg_data['root'], train=True, 
+        dataset = IdxDataset(MNIST(root=cfg_data['root'], train=cfg_data['train'], 
                                    download=True, transform=transforms.ToTensor()))
     elif cfg_data['type'] == 'cifar10':
-        dataset = IdxDataset(CIFAR10(root=cfg_data['root'], train=True, 
+        dataset = IdxDataset(CIFAR10(root=cfg_data['root'], train=cfg_data['train'], 
                                      download=True, transform=transforms.ToTensor()))
     loader = DataLoader(dataset, batch_size=cfg_data['batch_size'], 
-                        shuffle=True, num_workers=cfg_data['num_workers'], pin_memory=True)
-    sampler_loader = DataLoader(dataset, batch_size=cfg_data['batch_size'], 
-                                shuffle=False, num_workers=cfg_data['num_workers'], pin_memory=True)
-    return loader, sampler_loader
+                        shuffle=shuffle, num_workers=cfg_data['num_workers'], pin_memory=True)
+    return loader
     
     
 def get_optimizer(model, cfg_opt):
@@ -79,8 +77,19 @@ def get_loss(cfg_loss, device):
     else:
         print(f'Unknown loss type in config: {cfg_loss["type"]}')
 
+def get_model(cfg_gen, n_components, bw_method, device, train_loader, sampler_loader):
+    sampler = SampleGenerator(sampler_loader, z_dim=n_components, bw_method=bw_method)
+    checkpoint = None
+    if 'checkpoint' in cfg_gen.keys():
+        checkpoint = cfg_gen.pop('checkpoint')
+    generator = GLOGenerator(dataloader=train_loader, latent_channels=n_components, **cfg_gen).to(device)
+    model = GLOModel(generator, sampler, sparse=True).to(device)
+    if checkpoint is not None:
+        model.load_state_dict(torch.load(checkpoint, map_location=device))
+    return model
+        
 
-def get_flow(n_components, cfg_flow):
+def get_flow(n_components, cfg_flow, device):
     def subnet_fc(dims_in, dims_out):
         middle_dim = cfg_flow['middle_dim']
         fc1 = nn.Linear(dims_in, middle_dim)
@@ -102,6 +111,9 @@ def get_flow(n_components, cfg_flow):
                 flow.append(Fm.OrthogonalTransform)
             else:
                 print(f'Unknown transitional block in config: {cfg_flow["transitional_block"]}')
+    flow.to(device)
+    if 'checkpoint' in cfg_flow:
+        flow.load_state_dict(torch.load(cfg_flow['checkpoint'], map_location=device))
     return flow
 
 
@@ -117,11 +129,14 @@ def main():
     bw_method = cfg['bw_method']
     kwargs = {'cfg': cfg}
     kwargs['experiment'] = get_experiment(cfg.get('experiment', None))
-    kwargs['train_loader'], sampler_loader = get_dataset(cfg['data'])
-    sampler = SampleGenerator(sampler_loader, z_dim=n_components, bw_method=bw_method)
-    generator = GLOGenerator(dataloader=kwargs['train_loader'], latent_channels=n_components, **cfg['generator']).to(device)
-    kwargs['model'] = GLOModel(generator, sampler, sparse=True).to(device)
-    kwargs['flow'] = get_flow(n_components, cfg['flow']).to(device)
+    kwargs['train_loader'] = get_dataset(cfg['data']['train'], shuffle=True)
+    sampler_loader = get_dataset(cfg['data']['train'], shuffle=False)
+    if 'test' in cfg['data']:
+        kwargs['val_loader'] = get_dataset(cfg['data']['test'], shuffle=True)
+    else:
+        kwargs['val_loader'] = kwargs['train_loader']
+    kwargs['model'] = get_model(cfg['generator'], n_components, bw_method, device, kwargs['train_loader'], sampler_loader)
+    kwargs['flow'] = get_flow(n_components, cfg['flow'], device)
     
     kwargs['g_optimizer'] = get_optimizer(kwargs['model'].generator, cfg['g_optimizer'])
     kwargs['z_optimizer'] = get_optimizer(kwargs['model'].z, cfg['z_optimizer'])

@@ -7,18 +7,26 @@ exp_name: cluster_test
 alpha: 0.5
 clipping_value: 0.0001
 
-experiment:
-    api_key: CfFmqDpTCtsdDkLooedZh7bs2
-    project_name: joint-cifar
-    workspace: alexandernevarko
-    auto_metric_logging: False
+# experiment:
+#     api_key: CfFmqDpTCtsdDkLooedZh7bs2
+#     project_name: joint-cifar
+#     workspace: alexandernevarko
+#     auto_metric_logging: False
 
 
 data: 
-    type: cifar10
-    root: datasets/CIFAR10
-    batch_size: 32
-    num_workers: 1
+    train:
+        type: cifar10
+        root: datasets/CIFAR10
+        train: False
+        batch_size: 32
+        num_workers: 1
+    test:
+        type: cifar10
+        root: datasets/CIFAR10
+        train: False
+        batch_size: 32
+        num_workers: 1
 
 generator:
     min_channels: 128
@@ -26,12 +34,14 @@ generator:
     num_blocks: 3
     normalization: ada
     lrelu_slope: 0.0
+    checkpoint: pretrained/joint/alpha_0.1_100_256_flow_laploss3_test_set_generator_model.pth
 
 flow:
     middle_dim: 256
     n_blocks: 100
     base_block: AllInOneBlock
     transitional_block: PermuteRandom
+    checkpoint: pretrained/joint/alpha_0.1_100_256_flow_laploss3_test_set_flow_model.pth
 
 g_optimizer:
     type: adam
