@@ -60,7 +60,7 @@ def get_scheduler(opt, cfg_opt):
     elif cfg_opt['lr_policy']['type'] == 'multistep':
         scheduler = lr_scheduler.MultiStepLR(
             opt,
-            step_size=cfg_opt['lr_policy']['steps'],
+            milestones=cfg_opt['lr_policy']['steps'],
             gamma=cfg_opt['lr_policy']['gamma'])
     else:
         return NotImplementedError('Learning rate policy {} not implemented.'.
