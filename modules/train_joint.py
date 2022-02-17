@@ -128,5 +128,5 @@ def train_joint(model, flow, train_loader,
                 experiment.log_metric(f'FID', fid, epoch=epoch, step=epoch)
                 experiment.log_metric(f'IS', inception_score, epoch=epoch, step=epoch)
                 
-    torch.save(model.state_dict(), os.path.join(model_path, f'{exp_name}_generator_model.pth'))
-    torch.save(flow.state_dict(), os.path.join(model_path, f'{exp_name}_flow_model.pth'))
+        torch.save(model.state_dict(), os.path.join(model_path, f'{exp_name}_generator_model.pth'))
+        torch.save(flow.state_dict(), os.path.join(model_path, f'{exp_name}_flow_model.pth'))
