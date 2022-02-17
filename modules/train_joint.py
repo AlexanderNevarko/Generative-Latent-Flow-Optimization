@@ -17,7 +17,7 @@ def train_joint(model, flow, train_loader,
                 g_optimizer, z_optimizer, 
                 flow_optimizer, g_scheduler, 
                 z_scheduler, flow_scheduler, 
-                criterion, val_loss, 
+                criterion, val_loss, val_loader, 
                 experiment, cfg):
     model_path = cfg['model_path']
     device = cfg['device']
@@ -119,7 +119,7 @@ def train_joint(model, flow, train_loader,
                     fake_lats, _ = flow(normal_sample, rev=True)
                     return fake_lats
 
-                fid, inception_score = val_loss(model, train_loader, inputs_generator)
+                fid, inception_score = val_loss(model, val_loader, inputs_generator)
                 print(f'FID: {fid}, IS: {inception_score}')
                 if np.isnan(fid) or np.isnan(inception_score):
                     print(f'Bad FID {fid} or IS {inception_score}')
