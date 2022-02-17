@@ -1,4 +1,3 @@
-from comet_ml import Experiment
 import yaml
 import os
 import sys
@@ -17,15 +16,11 @@ import FrEIA.modules as Fm
 from modules.glo_generator import SampleGenerator, GLOGenerator, GLOModel
 from modules.loss import LapLoss, Lap35Loss, ValLoss
 from modules.dataset import IdxDataset
-from modules.train_joint import train_joint
+from modules.validate import validate
 
 import warnings
 warnings.filterwarnings("ignore")
 
-def get_experiment(cfg_exp):
-    if cfg_exp is None:
-        return None
-    return Experiment(**cfg_exp)
 
 def get_dataset(cfg_data, shuffle):
     if cfg_data['type'] == 'mnist':
@@ -49,6 +44,7 @@ def get_optimizer(model, cfg_opt):
     else:
         print(f'Unknown optimizer in config: {cfg_opt["type"]}')
 
+
 def get_scheduler(opt, cfg_opt):
     if 'lr_policy' not in cfg_opt:
         return None
@@ -67,6 +63,7 @@ def get_scheduler(opt, cfg_opt):
                                    format(cfg_opt['lr_policy']['type']))
     return scheduler
 
+
 def get_loss(cfg_loss, device):
     if cfg_loss['type'] == 'LapLoss':
         return LapLoss(**cfg_loss['params'], device=device)
@@ -74,6 +71,7 @@ def get_loss(cfg_loss, device):
         return Lap35Loss(**cfg_loss['params'], device=device)
     else:
         print(f'Unknown loss type in config: {cfg_loss["type"]}')
+
 
 def get_model(cfg_gen, n_components, bw_method, device, train_loader, sampler_loader):
     sampler = SampleGenerator(sampler_loader, z_dim=n_components, bw_method=bw_method)
@@ -126,27 +124,24 @@ def main():
     n_components = cfg['lat_dim']
     bw_method = cfg['bw_method']
     kwargs = {'cfg': cfg}
-    kwargs['experiment'] = get_experiment(cfg.get('experiment', None))
-    kwargs['train_loader'] = get_dataset(cfg['data']['train'], shuffle=True)
+    train_loader = get_dataset(cfg['data']['train'], shuffle=True)
     sampler_loader = get_dataset(cfg['data']['train'], shuffle=False)
     if 'test' in cfg['data']:
         kwargs['val_loader'] = get_dataset(cfg['data']['test'], shuffle=True)
     else:
         kwargs['val_loader'] = kwargs['train_loader']
-    kwargs['model'] = get_model(cfg['generator'], n_components, bw_method, device, kwargs['train_loader'], sampler_loader)
+    kwargs['model'] = get_model(cfg['generator'], n_components, bw_method, device, train_loader, sampler_loader)
     kwargs['flow'] = get_flow(n_components, cfg['flow'], device)
     
-    kwargs['g_optimizer'] = get_optimizer(kwargs['model'].generator, cfg['g_optimizer'])
-    kwargs['z_optimizer'] = get_optimizer(kwargs['model'].z, cfg['z_optimizer'])
-    kwargs['flow_optimizer'] = get_optimizer(kwargs['flow'], cfg['flow_optimizer'])
-    kwargs['g_scheduler'] = get_scheduler(kwargs['g_optimizer'], cfg['g_optimizer'])
-    kwargs['z_scheduler'] = get_scheduler(kwargs['z_optimizer'], cfg['z_optimizer'])
-    kwargs['flow_scheduler'] = get_scheduler(kwargs['flow_optimizer'], cfg['flow_optimizer'])
-    kwargs['criterion'] = get_loss(cfg['loss'], device)
+    # kwargs['g_optimizer'] = get_optimizer(kwargs['model'].generator, cfg['g_optimizer'])
+    # kwargs['z_optimizer'] = get_optimizer(kwargs['model'].z, cfg['z_optimizer'])
+    # kwargs['flow_optimizer'] = get_optimizer(kwargs['flow'], cfg['flow_optimizer'])
+    # kwargs['g_scheduler'] = get_scheduler(kwargs['g_optimizer'], cfg['g_optimizer'])
+    # kwargs['z_scheduler'] = get_scheduler(kwargs['z_optimizer'], cfg['z_optimizer'])
+    # kwargs['flow_scheduler'] = get_scheduler(kwargs['flow_optimizer'], cfg['flow_optimizer'])
+    # kwargs['criterion'] = get_loss(cfg['loss'], device)
     kwargs['val_loss'] = ValLoss(device)
-    
-    train_joint(**kwargs)
-    
+    validate(**kwargs)
     
 
 if __name__ == '__main__':

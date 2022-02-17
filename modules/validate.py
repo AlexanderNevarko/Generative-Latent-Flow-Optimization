@@ -10,6 +10,15 @@ from tqdm.notebook import tqdm
 
 from .glo_generator import SampleGenerator
 
+def validate(model, flow, val_loss, val_loader, cfg):
+    device = cfg['device']
+    n_components = cfg['lat_dim']
+    def inputs_generator(size):
+        normal_sample = torch.randn(size, n_components).to(device)
+        fake_lats, _ = flow(normal_sample, rev=True)
+        return fake_lats
+    fid, inception_score = val_loss(model, val_loader, inputs_generator)
+    print(f'FID: {fid}, IS: {inception_score}')
 
 class Validator():
     
