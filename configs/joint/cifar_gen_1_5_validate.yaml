@@ -23,9 +23,11 @@ generator:
     num_blocks: 3
     normalization: ada
     lrelu_slope: 0.0
+    # checkpoint:
 
 flow:
     middle_dim: 256
     n_blocks: 100
     base_block: AllInOneBlock
     transitional_block: PermuteRandom
+    # checkpoint:

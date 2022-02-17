@@ -4,7 +4,6 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import numpy as np
 from .visualization import img_raw_by_raw
-from .loss import ValLoss
 
 from tqdm import tqdm
 
