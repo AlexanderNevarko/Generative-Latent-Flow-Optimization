@@ -87,5 +87,6 @@ class GLOTrainer():
                 
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
             if (epoch+1) % 2 == 0:
+                print('Rebuilding tree...')
                 self.model.tree.rebuild().to(self.device)
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))
