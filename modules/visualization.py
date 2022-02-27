@@ -25,7 +25,7 @@ def visualize_paired_results(glo_model, dataloader, img_num=8):
     img_num: number of images to draw
     '''
     
-    idx = torch.randint(low=0, high=len(glo_model.z.weight), size=(img_num, ))
+    idx = torch.randint(low=0, high=len(glo_model.tree), size=(img_num, ))
     preds = glo_model(idx=idx.to(glo_model.z.weight.device)).detach().cpu()
     img = []
     for i in idx:

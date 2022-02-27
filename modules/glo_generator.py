@@ -67,6 +67,9 @@ class LatentTree(nn.Module):
         self.create_tree_()
         return self
     
+    def __len__(self):
+        return len(self.latents)
+    
     def node_sum_(self, idx):
         lat = 0
         for i, embed in enumerate(self.node_values.values()):
