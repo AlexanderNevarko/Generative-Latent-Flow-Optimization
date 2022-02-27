@@ -6,12 +6,13 @@ from torchvision import transforms
 
 
 def visualize_image_grid(glo_model, inputs=None):
+    gen_device = next(iter(glo_model.parameters())).device
     if inputs is not None:
-        inputs = inputs.to(glo_model.z.weight.device)
+        inputs = inputs.to(gen_device)
         img = glo_model(inputs=inputs)
     else:    
-        idx_num = len(glo_model.z.weight)
-        random_idx = torch.randint(low=0, high=idx_num, size=(16,), device=glo_model.z.weight.device)
+        idx_num = len(glo_model.tree)
+        random_idx = torch.randint(low=0, high=idx_num, size=(16,), device=gen_device)
         img = glo_model(idx=random_idx)
     img = img.detach().cpu()
     grid = make_grid(img, nrow=len(img) // 4, padding=1)
@@ -24,9 +25,9 @@ def visualize_paired_results(glo_model, dataloader, img_num=8):
     dataloader: train dataloader
     img_num: number of images to draw
     '''
-    
+    gen_device = next(iter(glo_model.parameters())).device
     idx = torch.randint(low=0, high=len(glo_model.tree), size=(img_num, ))
-    preds = glo_model(idx=idx.to(glo_model.z.weight.device)).detach().cpu()
+    preds = glo_model(idx=idx.to(gen_device)).detach().cpu()
     img = []
     for i in idx:
         img.append(dataloader.dataset[i][1].detach().cpu())
