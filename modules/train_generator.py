@@ -37,7 +37,6 @@ class GLOTrainer():
         cnt = Counter()
         for epoch in range(n_epochs):
             running_loss = []
-            z_grad = torch.zeros_like(self.model.z.weight).to(self.device)
             self.model.train()
             for i, (idx, img, _) in enumerate(tqdm(train_loader, leave=False)):
                 idx, img = idx.long().to(self.device), img.float().to(self.device)
@@ -50,15 +49,10 @@ class GLOTrainer():
                 generator_optimizer.step()
                 z_optimizer.step()
                 
-                # Don't forget to reproject z
-                with torch.no_grad():
-                    self.model.z.weight[idx] = \
-                        self.model.sample_generator.reproject_to_unit_ball(self.model.z.weight[idx])
                 # Log metrics
                 running_loss.append(loss.item())
                 if self.logger is not None:
                     self.logger.log_metric(f'Train loss', loss.item(), epoch=epoch, step=cnt['train'])
-                z_grad += self.model.z.weight.grad.to_dense()
                 cnt['train'] += 1
             # Apply schedulers
             if generator_scheduler is not None:
@@ -80,7 +74,6 @@ class GLOTrainer():
                                           name=f'Epoch {epoch}', step=epoch)
                 except Exception as e:
                     self.logger.log_image(visualize_image_grid(self.model), name=f'Epoch {epoch}', step=epoch)
-                self.logger.log_metric(f'Average z-gradient', torch.mean(torch.abs(z_grad)), epoch=epoch, step=epoch)
                 
                 if epoch % 5 == 0:
                     print(f'Calculating FID and IS on epoch {epoch}')
@@ -92,4 +85,6 @@ class GLOTrainer():
                 
                 
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
+            if (i+1) % 2 == 0:
+                self.model.tree.rebuild().to(self.device)
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))

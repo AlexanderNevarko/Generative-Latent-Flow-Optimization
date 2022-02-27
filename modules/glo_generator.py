@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch.nn.utils import spectral_norm
 
 from sklearn.decomposition import PCA
+from sklearn.cluster import MiniBatchKMeans
 from scipy.stats import gaussian_kde
 
 from .res_block import PreActResBlock, AdaptiveBatchNorm
@@ -37,7 +38,7 @@ class SampleGenerator():
         return self.target
         
     def get_z_dataset(self):
-        return SampleGenerator.reproject_to_unit_ball(torch.tensor(self.z_dataset, requires_grad=True))
+        return torch.tensor(self.z_dataset, requires_grad=True)
     
     @staticmethod
     def reproject_to_unit_ball(z):
@@ -46,6 +47,82 @@ class SampleGenerator():
         ones = torch.ones_like(l2norm)
         z = z / (torch.amax(torch.vstack([l2norm, ones]), dim=0)).view(z.shape[0], 1)
         return z.float()
+
+class LatentTree(nn.Module):
+    def __init__(self, latents, node_degree, sparse, verbose=False):
+        super(LatentTree, self).__init__()
+        self.latents = latents
+        self.node_degree = node_degree
+        self.sparse = sparse
+        self.verbose = verbose
+        self.create_tree_()
+        
+    def forward(self, idx):
+        return self.node_sum_(idx)
+
+    def rebuild(self):
+        device = next(iter(self.parameters())).device
+        idx = torch.arange(0, len(self.latents), device=device)
+        self.latents = self(idx).to(torch.device('cpu'))
+        self.create_tree_()
+        return self
+    
+    def node_sum_(self, idx):
+        lat = 0
+        for i, embed in enumerate(self.node_values.values()):
+            lat += embed(idx)
+            if i < len(self.nodes):
+                idx = torch.tensor(self.nodes[i][idx])
+        return lat
+    
+    def create_tree_(self):
+        self.depth = 0
+        self.nodes = nn.ParameterList()
+        self.node_values = nn.ModuleDict()
+        data = self.latents.clone().detach()
+        n_centroids = len(data) // self.node_degree
+        
+        kmeans = MiniBatchKMeans(n_clusters=n_centroids, init='k-means++').fit(data)
+        labels = kmeans.labels_
+        centroids = torch.zeros_like(torch.tensor(kmeans.cluster_centers_))
+        for label in np.unique(labels):
+            label_idx = np.argwhere(labels==label).T
+            centroids[label] = torch.mean(data[label_idx], dim=0)
+            data[label_idx] -= centroids[label]
+        self.node_values.update({str(self.depth): nn.Embedding.from_pretrained(data.clone().detach(), 
+                                                                               freeze=False, 
+                                                                               sparse=self.sparse)})
+        self.nodes.append(nn.Parameter(torch.tensor(labels).long(), requires_grad=False))
+        if self.verbose:
+            print(f'Created {len(data)} initial nodes at height {self.depth}')
+        data = centroids
+        n_centroids = len(data) // self.node_degree
+        self.depth += 1
+        
+        while n_centroids > 1:
+            kmeans = MiniBatchKMeans(n_clusters=n_centroids, init='k-means++').fit(data)
+            labels = kmeans.labels_
+            centroids = torch.zeros_like(torch.tensor(kmeans.cluster_centers_))
+            for label in np.unique(labels):
+                label_idx = np.argwhere(labels==label).T
+                centroids[label] = torch.mean(data[label_idx], dim=0)
+                data[label_idx] -= centroids[label]
+            self.node_values.update({str(self.depth): nn.Embedding.from_pretrained(data.clone().detach(), 
+                                                                                   freeze=False, 
+                                                                                   sparse=self.sparse)})
+            self.nodes.append(nn.Parameter(torch.tensor(labels).long(), requires_grad=False))
+            if self.verbose:
+                print(f'Created {len(data)} nodes at height {self.depth}')
+            data = centroids
+            n_centroids = len(data) // self.node_degree
+            self.depth += 1
+            
+        self.node_values.update({str(self.depth): nn.Embedding.from_pretrained(data.clone().detach(), 
+                                                                               freeze=False, 
+                                                                               sparse=self.sparse)})
+        if self.verbose:
+                print(f'Created {len(data)} nodes at height {self.depth}')
+        
 
 
 class GLOGenerator(nn.Module):
@@ -118,46 +195,19 @@ class GLOGenerator(nn.Module):
         assert out.shape == (latents.shape[0], self.out_channels, *self.output_size)
         return out
 
-    # def optimize_to_img(self, img, loss_func, min_loss, optimizer, init_z=None):
-    #     '''
-    #     img: target images tensor with shape (B x C x H x W), must be on model device!
-    #     loss_func: loss function for images
-    #     min_loss: minimal value of loss to stop iterations
-    #     optimizer: optimizer for Z latent vectors
-    #     init_z: initial z values
-    #     '''
-    #     bs, channels, height, width = img.shape
-    #     if init_z is None:
-    #         init_z = torch.randn(size=(bs, self.embed_features), device=img.device)
-    #     import ipdb; ipdb.set_trace()
-    #     z = SampleGenerator.reproject_to_unit_ball(init_z)
-    #     z.requires_grad_(True)
-    #     loss = torch.full(size=(bs, ), fill_value=min_loss+1.0)
-    #     while torch.any(min_loss < loss):
-    #         optimizer.zero_grad()
-    #         preds = self(z)
-    #         loss = loss_func(preds, img)
-    #         loss.backward()
-    #         optimizer.step()
-    #         with torch.no_grad():
-    #             z = SampleGenerator.reproject_to_unit_ball(z)
-    #             z.requires_grad_(True)
-    #     return z.detach(), loss
         
 
 class GLOModel(nn.Module):
-    def __init__(self, generator, sample_generator, sparse, lat_regularization=None):
+    def __init__(self, generator, sample_generator, sparse, node_degree, lat_regularization=None):
         super(GLOModel, self).__init__()
         self.generator = generator
         self.sample_generator = sample_generator
-        self.z = nn.Embedding.from_pretrained(self.sample_generator.get_z_dataset(),
-                                              sparse=sparse, freeze=False, max_norm=lat_regularization)
-        self.z.requires_grad = True
+        self.tree = LatentTree(self.sample_generator.get_z_dataset(), node_degree, sparse, verbose=True)
     
     def forward(self, idx=None, inputs=None):
         if inputs is not None:
             return self.generator(inputs)
-        return self.generator(self.z(torch.tensor(idx)))
+        return self.generator(self.tree(torch.tensor(idx)))
     
     # def optimize_to_img(self, img, loss_func, min_loss, optimizer, init_z=None):
     #     return self.generator.optimize_to_img(img, loss_func, min_loss, optimizer, init_z)
