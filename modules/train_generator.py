@@ -6,7 +6,7 @@ import numpy as np
 from .visualization import visualize_image_grid, visualize_paired_results
 from .loss import ValLoss
 
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 from collections import Counter
 
@@ -29,7 +29,8 @@ class GLOTrainer():
               fid_loss=None,
               model_path='',
               generator_scheduler=None,
-              z_scheduler=None):
+              z_scheduler=None,
+              tree_rebuild_freq=2):
         if self.logger is not None:
             self.logger.set_name(exp_name)
         self.model.train()
@@ -86,7 +87,7 @@ class GLOTrainer():
                 
                 
             print(f'Average epoch {epoch} loss: {np.mean(running_loss)}')
-            if (epoch+1) % 2 == 0:
+            if epoch % tree_rebuild_freq == 0:
                 print('Rebuilding tree...')
                 self.model.tree.rebuild().to(self.device)
             torch.save(self.model.state_dict(), os.path.join(model_path, f'{exp_name}_model.pth'))

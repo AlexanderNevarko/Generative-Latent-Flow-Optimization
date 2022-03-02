@@ -48,6 +48,7 @@ class SampleGenerator():
         z = z / (torch.amax(torch.vstack([l2norm, ones]), dim=0)).view(z.shape[0], 1)
         return z.float()
 
+
 class LatentTree(nn.Module):
     def __init__(self, latents, node_degree, sparse, verbose=False):
         super(LatentTree, self).__init__()
@@ -64,7 +65,32 @@ class LatentTree(nn.Module):
         device = next(iter(self.parameters())).device
         idx = torch.arange(0, len(self.latents), device=device)
         self.latents = self(idx).to(torch.device('cpu'))
-        self.create_tree_()
+        
+        self.depth = 0
+        data = self.latents.clone().detach()
+        n_centroids = len(data) // self.node_degree
+        
+        while n_centroids > 1:
+            kmeans = MiniBatchKMeans(n_clusters=n_centroids, init='k-means++').fit(data)
+            labels = kmeans.labels_
+            centroids = torch.zeros_like(torch.tensor(kmeans.cluster_centers_))
+            for label in np.unique(labels):
+                label_idx = np.argwhere(labels==label).T
+                centroids[label] = torch.mean(data[label_idx], dim=0)
+                data[label_idx] -= centroids[label]
+            with torch.no_grad():
+                self.node_values[str(self.depth)].weight[:] = data.clone().detach()
+                self.nodes[self.depth] = nn.Parameter(torch.tensor(labels).long(), requires_grad=False)
+            if self.verbose:
+                print(f'Created {len(data)} nodes at height {self.depth}')
+            data = centroids
+            n_centroids = len(data) // self.node_degree
+            self.depth += 1
+        with torch.no_grad():   
+            self.node_values[str(self.depth)].weight[:] = data.clone().detach()
+        if self.verbose:
+                print(f'Created {len(data)} nodes at height {self.depth}')
+                
         return self
     
     def __len__(self):
@@ -84,23 +110,6 @@ class LatentTree(nn.Module):
         self.node_values = nn.ModuleDict()
         data = self.latents.clone().detach()
         n_centroids = len(data) // self.node_degree
-        
-        kmeans = MiniBatchKMeans(n_clusters=n_centroids, init='k-means++').fit(data)
-        labels = kmeans.labels_
-        centroids = torch.zeros_like(torch.tensor(kmeans.cluster_centers_))
-        for label in np.unique(labels):
-            label_idx = np.argwhere(labels==label).T
-            centroids[label] = torch.mean(data[label_idx], dim=0)
-            data[label_idx] -= centroids[label]
-        self.node_values.update({str(self.depth): nn.Embedding.from_pretrained(data.clone().detach(), 
-                                                                               freeze=False, 
-                                                                               sparse=self.sparse)})
-        self.nodes.append(nn.Parameter(torch.tensor(labels).long(), requires_grad=False))
-        if self.verbose:
-            print(f'Created {len(data)} initial nodes at height {self.depth}')
-        data = centroids
-        n_centroids = len(data) // self.node_degree
-        self.depth += 1
         
         while n_centroids > 1:
             kmeans = MiniBatchKMeans(n_clusters=n_centroids, init='k-means++').fit(data)
@@ -125,7 +134,8 @@ class LatentTree(nn.Module):
                                                                                sparse=self.sparse)})
         if self.verbose:
                 print(f'Created {len(data)} nodes at height {self.depth}')
-        
+                
+        return self
 
 
 class GLOGenerator(nn.Module):
