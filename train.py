@@ -75,13 +75,13 @@ def get_loss(cfg_loss, device):
     else:
         print(f'Unknown loss type in config: {cfg_loss["type"]}')
 
-def get_model(cfg_gen, n_components, bw_method, device, train_loader, sampler_loader):
+def get_model(cfg_gen, cfg_model, n_components, bw_method, device, train_loader, sampler_loader):
     sampler = SampleGenerator(sampler_loader, z_dim=n_components, bw_method=bw_method)
     checkpoint = None
     if 'checkpoint' in cfg_gen.keys():
         checkpoint = cfg_gen.pop('checkpoint')
     generator = GLOGenerator(dataloader=train_loader, latent_channels=n_components, **cfg_gen).to(device)
-    model = GLOModel(generator, sampler, sparse=True).to(device)
+    model = GLOModel(generator, sampler, sparse=True, **cfg_model).to(device)
     if checkpoint is not None:
         model.load_state_dict(torch.load(checkpoint, map_location=device))
     return model
@@ -133,7 +133,7 @@ def main():
         kwargs['val_loader'] = get_dataset(cfg['data']['test'], shuffle=True)
     else:
         kwargs['val_loader'] = kwargs['train_loader']
-    kwargs['model'] = get_model(cfg['generator'], n_components, bw_method, device, kwargs['train_loader'], sampler_loader)
+    kwargs['model'] = get_model(cfg['generator'], cfg['model'], n_components, bw_method, device, kwargs['train_loader'], sampler_loader)
     kwargs['flow'] = get_flow(n_components, cfg['flow'], device)
     
     kwargs['g_optimizer'] = get_optimizer(kwargs['model'].generator, cfg['g_optimizer'])

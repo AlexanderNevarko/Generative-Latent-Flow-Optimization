@@ -23,6 +23,7 @@ def train_joint(model, flow, train_loader,
     n_components = cfg['lat_dim']
     n_epochs = cfg['n_epochs']
     alpha = cfg['alpha'] # Factor of flow gradient
+    tree_rebuild_freq = cfg['tree_rebuild_freq']
     
     clipping_value = cfg.get('clipping_value', 1e-4) # for flow gradient clipping
     img_num = cfg.get('img_num', 16) # number of images to log
@@ -37,7 +38,7 @@ def train_joint(model, flow, train_loader,
         model.train()
         gen_running_loss = []
         flow_running_loss = []
-        for i, (idx, img, _) in enumerate(tqdm(train_loader, leave=False)):
+        for i, (idx, img, _) in enumerate(train_loader, leave=False):
             idx, img = idx.long().to(device), img.float().to(device)
             
             g_optimizer.zero_grad()
@@ -126,6 +127,10 @@ def train_joint(model, flow, train_loader,
                     inception_score = 2.45
                 experiment.log_metric(f'FID', fid, epoch=epoch, step=epoch)
                 experiment.log_metric(f'IS', inception_score, epoch=epoch, step=epoch)
+        
+        if epoch % tree_rebuild_freq == 0:
+            print('Rebuilding tree...')
+            model.tree.rebuild().to(device)
                 
         torch.save(model.state_dict(), os.path.join(model_path, f'{exp_name}_generator_model.pth'))
         torch.save(flow.state_dict(), os.path.join(model_path, f'{exp_name}_flow_model.pth'))
