@@ -12,6 +12,17 @@ from collections import Counter
 def bad_loss(loss):
     return (loss > 10) or torch.isnan(loss) or torch.isinf(loss)
 
+def extract_tree_grad(model):
+    grad = {}
+    for key, param in model.tree.node_values.items():
+       grad[key] = param.weight.grad.detach()
+       param.weight.grad.zero_()
+    return grad
+
+def sum_tree_grads(model, grad_gen, grad_flow, alpha):
+    for key, param in model.tree.node_values.items():
+        param.weight.grad = alpha*grad_flow[key] + (1-alpha)*grad_gen[key]
+
 def train_joint(model, flow, train_loader, 
                 g_optimizer, z_optimizer, 
                 flow_optimizer, g_scheduler, 
@@ -50,11 +61,10 @@ def train_joint(model, flow, train_loader,
             loss.backward(retain_graph=True)
             g_optimizer.step()
             # Save Z gradient from generator and zero it on Z parameter
-            gen_z_grad = model.z.weight.grad.detach()
-            model.z.weight.grad.zero_()
+            gen_tree_grad = extract_tree_grad(model)
             # Flow forward pass
-            noise = torch.randn_like(model.z(idx), device=device).float() * 1e-2 # For flow stability
-            normal_z, log_jac_det = flow(model.z(idx) + noise)
+            noise = torch.randn_like(model.tree(idx), device=device).float() * 1e-2 # For flow stability
+            normal_z, log_jac_det = flow(model.tree(idx) + noise)
             flow_loss = 0.5 * torch.sum(normal_z**2, 1) - log_jac_det
             flow_loss = flow_loss.mean() / n_components
             if bad_loss(flow_loss):
@@ -66,11 +76,10 @@ def train_joint(model, flow, train_loader,
             flow_optimizer.step()
             
             # Save Z gradient from flow and zero it on Z parameter
-            flow_z_grad = model.z.weight.grad.detach()
-            model.z.weight.grad.zero_()
+            flow_tree_grad = extract_tree_grad(model)
             
             # Reconstruct the Z gradient summing the two gradients from generator and flow
-            model.z.weight.grad = alpha*flow_z_grad + (1-alpha)*gen_z_grad
+            sum_tree_grads(model, gen_tree_grad, flow_tree_grad, alpha)
             z_optimizer.step()
             
             # Log metrics
@@ -100,7 +109,7 @@ def train_joint(model, flow, train_loader,
             model.eval()
             flow.eval()
             normal_samples = torch.randn(img_num, n_components).to(device)
-            random_idx = torch.randint(low=0, high=len(model.z.weight), size=(img_num,), device=device)
+            random_idx = torch.randint(low=0, high=len(model.tree), size=(img_num,), device=device)
 
             flow_samples, _ = flow(normal_samples, rev=True)
             flow_imgs = model(inputs=flow_samples)

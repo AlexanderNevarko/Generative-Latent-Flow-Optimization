@@ -137,7 +137,7 @@ def main():
     kwargs['flow'] = get_flow(n_components, cfg['flow'], device)
     
     kwargs['g_optimizer'] = get_optimizer(kwargs['model'].generator, cfg['g_optimizer'])
-    kwargs['z_optimizer'] = get_optimizer(kwargs['model'].z, cfg['z_optimizer'])
+    kwargs['z_optimizer'] = get_optimizer(kwargs['model'].tree, cfg['z_optimizer'])
     kwargs['flow_optimizer'] = get_optimizer(kwargs['flow'], cfg['flow_optimizer'])
     kwargs['g_scheduler'] = get_scheduler(kwargs['g_optimizer'], cfg['g_optimizer'])
     kwargs['z_scheduler'] = get_scheduler(kwargs['z_optimizer'], cfg['z_optimizer'])
