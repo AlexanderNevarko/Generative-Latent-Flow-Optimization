@@ -49,7 +49,7 @@ def train_joint(model, flow, train_loader,
         model.train()
         gen_running_loss = []
         flow_running_loss = []
-        for i, (idx, img, _) in enumerate(train_loader, leave=False):
+        for i, (idx, img, _) in enumerate(train_loader):
             idx, img = idx.long().to(device), img.float().to(device)
             
             g_optimizer.zero_grad()

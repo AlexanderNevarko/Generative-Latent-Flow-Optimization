@@ -165,7 +165,7 @@ class ValLoss(nn.Module):
         fake_features = []
         fake_probs = []
         gen_device = next(iter(generator.parameters())).device
-        for idx, real_img, _ in tqdm(dataloader, leave=False):
+        for idx, real_img, _ in dataloader:
             bs = real_img.shape[0]
             if inputs_generator is None:
                 idx = idx.long().to(gen_device)
