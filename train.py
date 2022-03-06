@@ -15,7 +15,7 @@ import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 
 from modules.glo_generator import SampleGenerator, GLOGenerator, GLOModel
-from modules.loss import LapLoss, Lap35Loss, ValLoss
+from modules.loss import LapLoss, Lap35Loss, ValLoss, VGGPerceptualLoss
 from modules.dataset import IdxDataset
 from modules.train_joint import train_joint
 
@@ -37,7 +37,6 @@ def get_dataset(cfg_data, shuffle):
     loader = DataLoader(dataset, batch_size=cfg_data['batch_size'], 
                         shuffle=shuffle, num_workers=cfg_data['num_workers'], pin_memory=True)
     return loader
-    
     
 def get_optimizer(model, cfg_opt):
     if cfg_opt['type'] == 'adam':
@@ -72,6 +71,8 @@ def get_loss(cfg_loss, device):
         return LapLoss(**cfg_loss['params'], device=device)
     if cfg_loss['type'] == 'Lap35Loss':
         return Lap35Loss(**cfg_loss['params'], device=device)
+    if cfg_loss['type'] == 'PerceptualVGG':
+        return VGGPerceptualLoss(**cfg_loss['params']).to(device)
     else:
         print(f'Unknown loss type in config: {cfg_loss["type"]}')
 
