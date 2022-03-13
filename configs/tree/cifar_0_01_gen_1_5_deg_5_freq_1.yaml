@@ -1,0 +1,72 @@
+n_epochs: 501
+lat_dim: 128
+bw_method: 0.1
+device: cuda:1
+model_path: models/cifar_test
+exp_name: tree_deg_5_freq_1_alpha_0_01
+alpha: 0.01
+clipping_value: 0.0001
+tree_rebuild_freq: 1
+
+experiment:
+    api_key: CfFmqDpTCtsdDkLooedZh7bs2
+    project_name: joint-cifar
+    workspace: alexandernevarko
+    auto_metric_logging: False
+
+data: 
+    train:
+        type: cifar10
+        root: datasets/CIFAR10
+        train: True
+        batch_size: 96
+        num_workers: 1
+    test:
+        type: cifar10
+        root: datasets/CIFAR10
+        train: False
+        batch_size: 96
+        num_workers: 1
+
+generator:
+    min_channels: 192
+    max_channels: 1536
+    num_blocks: 3
+    normalization: ada
+    lrelu_slope: 0.0
+
+model:
+    node_degree: 5
+
+flow:
+    middle_dim: 256
+    n_blocks: 100
+    base_block: AllInOneBlock
+    transitional_block: PermuteRandom
+
+g_optimizer:
+    type: adam
+    lr: 0.001
+    lr_policy:
+        type: multistep
+        steps: [300, 400]
+        gamma: 0.2
+
+z_optimizer:
+    type: sparse_adam
+    lr: 0.001
+    lr_policy:
+        type: multistep
+        steps: [350, 450]
+        gamma: 0.2
+
+flow_optimizer:
+    type: adam
+    lr: 0.001
+
+loss:
+    type: LapLoss
+    params:
+        max_levels: 3
+        channels: 3
+        size: 3
