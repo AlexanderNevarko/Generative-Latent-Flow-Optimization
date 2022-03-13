@@ -1,0 +1,53 @@
+n_epochs: 501
+lat_dim: 128
+bw_method: 0.1
+device: cuda:3
+model_path: models/cifar_test
+exp_name: alpha_0.1_gen_1.5_laploss3_train
+alpha: 0.1
+clipping_value: 0.0001
+
+experiment:
+    api_key: CfFmqDpTCtsdDkLooedZh7bs2
+    project_name: joint-cifar
+    workspace: alexandernevarko
+    auto_metric_logging: False
+
+
+data: 
+    type: cifar10
+    root: datasets/CIFAR10
+    batch_size: 128
+    num_workers: 1
+
+generator:
+    min_channels: 192
+    max_channels: 1536
+    num_blocks: 3
+    normalization: ada
+    lrelu_slope: 0.0
+
+flow:
+    middle_dim: 256
+    n_blocks: 100
+    base_block: AllInOneBlock
+    transitional_block: PermuteRandom
+
+g_optimizer:
+    type: adam
+    lr: 0.001
+
+z_optimizer:
+    type: sparse_adam
+    lr: 0.001
+
+flow_optimizer:
+    type: adam
+    lr: 0.001
+
+loss:
+    type: LapLoss
+    params:
+        max_levels: 3
+        channels: 3
+        size: 3

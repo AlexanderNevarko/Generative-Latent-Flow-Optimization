@@ -1,12 +1,12 @@
 n_epochs: 501
 lat_dim: 128
 bw_method: 0.1
-device: cuda
+device: cuda:0
 model_path: models/cifar_test
-exp_name: tree_deg_2_freq_5_alpha_0_01
+exp_name: tree_deg_2_freq_1_alpha_0_01
 alpha: 0.01
 clipping_value: 0.0001
-tree_rebuild_freq: 5
+tree_rebuild_freq: 1
 
 experiment:
     api_key: CfFmqDpTCtsdDkLooedZh7bs2
@@ -18,14 +18,14 @@ data:
     train:
         type: cifar10
         root: datasets/CIFAR10
-        train: False
-        batch_size: 32
+        train: True
+        batch_size: 64
         num_workers: 1
     test:
         type: cifar10
         root: datasets/CIFAR10
         train: False
-        batch_size: 32
+        batch_size: 64
         num_workers: 1
 
 generator:
