@@ -1,0 +1,56 @@
+n_epochs: 501
+lat_dim: 128
+bw_method: 0.1
+device: cuda:2
+model_path: models/celeba
+exp_name: ds_64_alpha_0_1_laploss5_train
+alpha: 0.1
+clipping_value: 0.0001
+
+experiment:
+    api_key: CfFmqDpTCtsdDkLooedZh7bs2
+    project_name: joint-celeba
+    workspace: alexandernevarko
+    auto_metric_logging: False
+
+
+data:
+    train:
+        type: celeba
+        root: /nfs/home/alex_nevarko/new-gan/glo-flow/datasets/CelebA_aligned/face
+        batch_size: 32
+        num_workers: 4
+        transforms: 
+            size: [64, 64]
+
+generator:
+    min_channels: 128
+    max_channels: 2048
+    num_blocks: 4
+    normalization: ada
+    lrelu_slope: 0.0
+
+flow:
+    middle_dim: 256
+    n_blocks: 100
+    base_block: AllInOneBlock
+    transitional_block: PermuteRandom
+
+g_optimizer:
+    type: adam
+    lr: 0.001
+
+z_optimizer:
+    type: sparse_adam
+    lr: 0.001
+
+flow_optimizer:
+    type: adam
+    lr: 0.001
+
+loss:
+    type: LapLoss
+    params:
+        max_levels: 3
+        channels: 3
+        size: 5

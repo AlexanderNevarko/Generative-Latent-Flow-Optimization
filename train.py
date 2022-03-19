@@ -9,7 +9,7 @@ import torch.nn as nn
 from torch.optim import Adam, SparseAdam, SGD, lr_scheduler
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from torchvision.datasets import MNIST, CIFAR10
+from torchvision.datasets import MNIST, CIFAR10, ImageFolder
 
 import FrEIA.framework as Ff
 import FrEIA.modules as Fm
@@ -27,13 +27,30 @@ def get_experiment(cfg_exp):
         return None
     return Experiment(**cfg_exp)
 
-def get_dataset(cfg_data, shuffle):
+
+def get_transforms(cfg_tr):
+    tr = []
+    if 'size' in cfg_tr.keys():
+        tr.append(transforms.Resize(cfg_tr['size']))
+    tr.append(transforms.ToTensor())
+    return transforms.Compose(tr)
+
+
+def get_dataset(cfg_data, shuffle, size=None):
     if cfg_data['type'] == 'mnist':
         dataset = IdxDataset(MNIST(root=cfg_data['root'], train=cfg_data['train'], 
                                    download=True, transform=transforms.ToTensor()))
     elif cfg_data['type'] == 'cifar10':
         dataset = IdxDataset(CIFAR10(root=cfg_data['root'], train=cfg_data['train'], 
                                      download=True, transform=transforms.ToTensor()))
+    elif cfg_data['type'] == 'celeba':
+        if size is not None:
+            transform = get_transforms({'size': size})
+        else:
+            transform = get_transforms(cfg_data['transforms'])
+
+        dataset = IdxDataset(ImageFolder(root=cfg_data['root'],
+                                         transform=transform))
     loader = DataLoader(dataset, batch_size=cfg_data['batch_size'], 
                         shuffle=shuffle, num_workers=cfg_data['num_workers'], pin_memory=True)
     return loader
@@ -48,6 +65,7 @@ def get_optimizer(model, cfg_opt):
         return SGD(model.parameters(), lr=cfg_opt['lr'])
     else:
         print(f'Unknown optimizer in config: {cfg_opt["type"]}')
+
 
 def get_scheduler(opt, cfg_opt):
     if 'lr_policy' not in cfg_opt:
@@ -67,6 +85,7 @@ def get_scheduler(opt, cfg_opt):
                                    format(cfg_opt['lr_policy']['type']))
     return scheduler
 
+
 def get_loss(cfg_loss, device):
     if cfg_loss['type'] == 'LapLoss':
         return LapLoss(**cfg_loss['params'], device=device)
@@ -74,6 +93,7 @@ def get_loss(cfg_loss, device):
         return Lap35Loss(**cfg_loss['params'], device=device)
     else:
         print(f'Unknown loss type in config: {cfg_loss["type"]}')
+
 
 def get_model(cfg_gen, n_components, bw_method, device, train_loader, sampler_loader):
     sampler = SampleGenerator(sampler_loader, z_dim=n_components, bw_method=bw_method)
@@ -128,7 +148,7 @@ def main():
     kwargs = {'cfg': cfg}
     kwargs['experiment'] = get_experiment(cfg.get('experiment', None))
     kwargs['train_loader'] = get_dataset(cfg['data']['train'], shuffle=True)
-    sampler_loader = get_dataset(cfg['data']['train'], shuffle=False)
+    sampler_loader = get_dataset(cfg['data']['train'], shuffle=False, size=[32, 32])
     if 'test' in cfg['data']:
         kwargs['val_loader'] = get_dataset(cfg['data']['test'], shuffle=True)
     else:
